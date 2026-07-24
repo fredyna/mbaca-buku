@@ -1,0 +1,23 @@
+.superpowers/
+
+# Go
+backend/tmp/
+backend/vendor/
+
+# Node
+frontend/node_modules/
+frontend/dist/
+
+# Environment
+.env
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# OS
+.DS_Store
+
+# Docker
+docker-compose.override.yml
