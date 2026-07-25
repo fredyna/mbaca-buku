@@ -55,12 +55,25 @@ func main() {
 	ebookService := service.NewEbookService(ebookRepo, minioStorage)
 	ebookHandler := handler.NewEbookHandler(ebookService)
 
+	progressRepo := repository.NewProgressRepository(db)
+	historyRepo := repository.NewHistoryRepository(db)
+	readingService := service.NewReadingService(progressRepo, historyRepo, ebookRepo, rdb)
+	historyService := service.NewHistoryService(historyRepo)
+	readingHandler := handler.NewReadingHandler(readingService)
+	historyHandler := handler.NewHistoryHandler(historyService)
+
+	flusherCtx, cancelFlusher := context.WithCancel(context.Background())
+	defer cancelFlusher()
+	readingService.StartFlusher(flusherCtx)
+
 	r := gin.Default()
 
 	router.Setup(r, &router.RouterConfig{
-		AuthHandler:  authHandler,
-		EbookHandler: ebookHandler,
-		JWTSecret:    cfg.JWTSecret,
+		AuthHandler:    authHandler,
+		EbookHandler:   ebookHandler,
+		ReadingHandler: readingHandler,
+		HistoryHandler: historyHandler,
+		JWTSecret:      cfg.JWTSecret,
 	})
 
 	log.Printf("Server starting on :%s", cfg.ServerPort)

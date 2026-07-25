@@ -8,9 +8,11 @@ import (
 )
 
 type RouterConfig struct {
-	AuthHandler  *handler.AuthHandler
-	EbookHandler *handler.EbookHandler
-	JWTSecret    string
+	AuthHandler    *handler.AuthHandler
+	EbookHandler   *handler.EbookHandler
+	ReadingHandler *handler.ReadingHandler
+	HistoryHandler *handler.HistoryHandler
+	JWTSecret      string
 }
 
 func Setup(r *gin.Engine, cfg *RouterConfig) {
@@ -40,6 +42,12 @@ func Setup(r *gin.Engine, cfg *RouterConfig) {
 			ebooks.PUT("/:id", cfg.EbookHandler.Update)
 			ebooks.DELETE("/:id", cfg.EbookHandler.Delete)
 			ebooks.GET("/:id/file", cfg.EbookHandler.GetFileURL)
+
+			ebooks.POST("/:id/open", cfg.ReadingHandler.OpenBook)
+			ebooks.GET("/:id/progress", cfg.ReadingHandler.GetProgress)
+			ebooks.PUT("/:id/progress", cfg.ReadingHandler.UpdateProgress)
 		}
+
+		protected.GET("/history", cfg.HistoryHandler.GetHistory)
 	}
 }
