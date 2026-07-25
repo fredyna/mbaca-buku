@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"log"
-	"net/http"
 
 	"github.com/gin-gonic/gin"
 
@@ -36,7 +35,7 @@ func main() {
 	}
 	defer rdb.Close()
 
-	_, err = storage.NewMinIOClient(cfg)
+	minioStorage, err := storage.NewMinIOClient(cfg)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -52,15 +51,16 @@ func main() {
 
 	authHandler := handler.NewAuthHandler(authService)
 
+	ebookRepo := repository.NewEbookRepository(db)
+	ebookService := service.NewEbookService(ebookRepo, minioStorage)
+	ebookHandler := handler.NewEbookHandler(ebookService)
+
 	r := gin.Default()
 
-	r.GET("/api/health", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{"success": true, "data": "ok"})
-	})
-
 	router.Setup(r, &router.RouterConfig{
-		AuthHandler: authHandler,
-		JWTSecret:   cfg.JWTSecret,
+		AuthHandler:  authHandler,
+		EbookHandler: ebookHandler,
+		JWTSecret:    cfg.JWTSecret,
 	})
 
 	log.Printf("Server starting on :%s", cfg.ServerPort)
