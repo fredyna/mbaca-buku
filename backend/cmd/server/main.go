@@ -1,12 +1,17 @@
 package main
 
 import (
+	"context"
 	"log"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 
 	"github.com/fredy/mbaca-buku/internal/config"
+	"github.com/fredy/mbaca-buku/internal/handler"
+	"github.com/fredy/mbaca-buku/internal/repository"
+	"github.com/fredy/mbaca-buku/internal/router"
+	"github.com/fredy/mbaca-buku/internal/service"
 	"github.com/fredy/mbaca-buku/internal/storage"
 	"github.com/fredy/mbaca-buku/pkg/cache"
 	"github.com/fredy/mbaca-buku/pkg/database"
@@ -36,10 +41,26 @@ func main() {
 		log.Fatal(err)
 	}
 
+	userRepo := repository.NewUserRepository(db)
+	authService := service.NewAuthService(userRepo, cfg.JWTSecret)
+
+	if err := authService.SeedDefaultUser(context.Background()); err != nil {
+		log.Printf("Warning: failed to seed default user: %v", err)
+	} else {
+		log.Println("Default admin user ready")
+	}
+
+	authHandler := handler.NewAuthHandler(authService)
+
 	r := gin.Default()
 
 	r.GET("/api/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"success": true, "data": "ok"})
+	})
+
+	router.Setup(r, &router.RouterConfig{
+		AuthHandler: authHandler,
+		JWTSecret:   cfg.JWTSecret,
 	})
 
 	log.Printf("Server starting on :%s", cfg.ServerPort)
