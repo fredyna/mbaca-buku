@@ -5,6 +5,7 @@ import LoginPage from '../pages/LoginPage';
 import RegisterPage from '../pages/RegisterPage';
 import DashboardPage from '../pages/DashboardPage';
 import EbookListPage from '../pages/EbookListPage';
+import ReaderPage from '../pages/ReaderPage';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useAuth();
@@ -32,6 +33,14 @@ export default function AppRouter() {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route
+          path="/read/:id"
+          element={
+            <ProtectedRoute>
+              <ReaderPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
           element={
             <ProtectedRoute>
               <Layout />
@@ -40,7 +49,6 @@ export default function AppRouter() {
         >
           <Route path="/" element={<DashboardPage />} />
           <Route path="/ebooks" element={<EbookListPage />} />
-          <Route path="/read/:id" element={<PlaceholderPage title="Reader" />} />
           <Route path="/history" element={<PlaceholderPage title="History" />} />
         </Route>
       </Routes>
