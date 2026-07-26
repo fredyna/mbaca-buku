@@ -3,6 +3,8 @@ import { useAuth } from '../context/AuthContext';
 import Layout from '../components/layout/Layout';
 import LoginPage from '../pages/LoginPage';
 import RegisterPage from '../pages/RegisterPage';
+import DashboardPage from '../pages/DashboardPage';
+import EbookListPage from '../pages/EbookListPage';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useAuth();
@@ -36,8 +38,8 @@ export default function AppRouter() {
             </ProtectedRoute>
           }
         >
-          <Route path="/" element={<PlaceholderPage title="Dashboard" />} />
-          <Route path="/ebooks" element={<PlaceholderPage title="Ebooks" />} />
+          <Route path="/" element={<DashboardPage />} />
+          <Route path="/ebooks" element={<EbookListPage />} />
           <Route path="/read/:id" element={<PlaceholderPage title="Reader" />} />
           <Route path="/history" element={<PlaceholderPage title="History" />} />
         </Route>
