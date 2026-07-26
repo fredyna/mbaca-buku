@@ -27,8 +27,16 @@ export default function ReaderPage() {
 
   useBeforeUnload(() => {
     if (id) {
-      const data = JSON.stringify({ page: currentPage });
-      navigator.sendBeacon(`/api/ebooks/${id}/progress`, new Blob([data], { type: 'application/json' }));
+      const token = localStorage.getItem('token');
+      fetch(`/api/ebooks/${id}/progress`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ page: currentPage }),
+        keepalive: true,
+      });
     }
   });
 
