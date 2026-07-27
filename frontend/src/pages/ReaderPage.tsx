@@ -41,6 +41,14 @@ export default function ReaderPage() {
   });
 
   useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth <= 1024) setDualPage(false);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  useEffect(() => {
     if (!id) return;
 
     const init = async () => {
@@ -82,7 +90,7 @@ export default function ReaderPage() {
 
   return (
     <div className="h-screen flex flex-col bg-gray-100">
-      <div className="bg-white border-b border-gray-200 px-4 py-2 flex items-center justify-between">
+      <div className="bg-white border-b border-gray-200 px-4 py-2 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
         <div className="flex items-center gap-4">
           <button onClick={() => navigate(-1)} className="text-gray-600 hover:text-gray-900">
             &larr; Back
