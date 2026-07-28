@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"strings"
 	"time"
 
 	"github.com/minio/minio-go/v7"
@@ -14,8 +15,9 @@ import (
 )
 
 type MinIOStorage struct {
-	client *minio.Client
-	bucket string
+	client   *minio.Client
+	bucket   string
+	endpoint string
 }
 
 func NewMinIOClient(cfg *config.Config) (*MinIOStorage, error) {
@@ -41,7 +43,7 @@ func NewMinIOClient(cfg *config.Config) (*MinIOStorage, error) {
 	}
 
 	log.Println("Connected to MinIO")
-	return &MinIOStorage{client: client, bucket: cfg.MinIOBucket}, nil
+	return &MinIOStorage{client: client, bucket: cfg.MinIOBucket, endpoint: cfg.MinIOEndpoint}, nil
 }
 
 func (s *MinIOStorage) UploadFile(ctx context.Context, objectName string, reader io.Reader, size int64, contentType string) (string, error) {
@@ -55,11 +57,17 @@ func (s *MinIOStorage) UploadFile(ctx context.Context, objectName string, reader
 }
 
 func (s *MinIOStorage) GetPresignedURL(ctx context.Context, objectName string, expiry time.Duration) (string, error) {
-	url, err := s.client.PresignedGetObject(ctx, s.bucket, objectName, expiry, nil)
+	u, err := s.client.PresignedGetObject(ctx, s.bucket, objectName, expiry, nil)
 	if err != nil {
 		return "", fmt.Errorf("failed to get presigned URL: %w", err)
 	}
-	return url.String(), nil
+	raw := u.String()
+	scheme := "http://"
+	if strings.HasPrefix(raw, "https://") {
+		scheme = "https://"
+	}
+	raw = strings.Replace(raw, scheme+s.endpoint, "/minio", 1)
+	return raw, nil
 }
 
 func (s *MinIOStorage) DeleteFile(ctx context.Context, objectName string) error {

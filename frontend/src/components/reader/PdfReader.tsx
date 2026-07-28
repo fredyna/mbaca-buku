@@ -54,7 +54,7 @@ export default function PdfReader({
 
   return (
     <div id="pdf-container" className="flex-1 overflow-auto bg-gray-100 flex justify-center p-4">
-      <Document file={fileUrl} onLoadSuccess={onDocLoad} loading={<div className="text-gray-500">Loading PDF...</div>}>
+      <Document file={{ url: fileUrl }} onLoadSuccess={onDocLoad} loading={<div className="text-gray-500">Loading PDF...</div>}>
         <div className={`flex ${dualPage ? 'gap-4' : ''}`}>
           <Page
             pageNumber={currentPage}

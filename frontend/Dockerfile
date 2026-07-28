@@ -8,5 +8,6 @@ RUN npm ci
 COPY . .
 RUN npm run build
 
-FROM nginx:alpine
-COPY --from=builder /app/dist /usr/share/nginx/html
+FROM alpine:3.20
+COPY --from=builder /app/dist /app/dist
+CMD ["sh", "-c", "rm -rf /output/* && cp -r /app/dist/* /output/"]
