@@ -25,7 +25,7 @@ func AuthMiddleware(jwtSecret string) gin.HandlerFunc {
 			return
 		}
 
-		userID, err := utils.ParseToken(parts[1], jwtSecret)
+		userID, role, err := utils.ParseToken(parts[1], jwtSecret)
 		if err != nil {
 			utils.ErrorResponse(c, http.StatusUnauthorized, "UNAUTHORIZED", "invalid or expired token")
 			c.Abort()
@@ -33,6 +33,7 @@ func AuthMiddleware(jwtSecret string) gin.HandlerFunc {
 		}
 
 		c.Set("user_id", userID)
+		c.Set("role", role)
 		c.Next()
 	}
 }

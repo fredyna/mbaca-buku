@@ -1,6 +1,9 @@
 package config
 
-import "os"
+import (
+	"log"
+	"os"
+)
 
 type Config struct {
 	ServerPort    string
@@ -20,6 +23,11 @@ type Config struct {
 }
 
 func Load() *Config {
+	jwtSecret := os.Getenv("JWT_SECRET")
+	if jwtSecret == "" {
+		log.Fatal("JWT_SECRET environment variable is required")
+	}
+
 	return &Config{
 		ServerPort:    getEnv("SERVER_PORT", "8080"),
 		DBHost:        getEnv("DB_HOST", "localhost"),
@@ -34,7 +42,7 @@ func Load() *Config {
 		MinIOPassword: getEnv("MINIO_ROOT_PASSWORD", "minioadmin123"),
 		MinIOBucket:   getEnv("MINIO_BUCKET", "mbaca-buku"),
 		MinIOUseSSL:   getEnv("MINIO_USE_SSL", "false") == "true",
-		JWTSecret:     getEnv("JWT_SECRET", "default-secret"),
+		JWTSecret:     jwtSecret,
 	}
 }
 

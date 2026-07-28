@@ -39,9 +39,9 @@ func Setup(r *gin.Engine, cfg *RouterConfig) {
 		{
 			ebooks.GET("", cfg.EbookHandler.List)
 			ebooks.GET("/:id", cfg.EbookHandler.GetByID)
-			ebooks.POST("", cfg.EbookHandler.Upload)
-			ebooks.PUT("/:id", cfg.EbookHandler.Update)
-			ebooks.DELETE("/:id", cfg.EbookHandler.Delete)
+			ebooks.POST("", middleware.AdminMiddleware(), cfg.EbookHandler.Upload)
+			ebooks.PUT("/:id", middleware.AdminMiddleware(), cfg.EbookHandler.Update)
+			ebooks.DELETE("/:id", middleware.AdminMiddleware(), cfg.EbookHandler.Delete)
 			ebooks.GET("/:id/file", cfg.EbookHandler.GetFileURL)
 
 			ebooks.POST("/:id/open", cfg.ReadingHandler.OpenBook)

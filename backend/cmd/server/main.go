@@ -3,6 +3,11 @@ package main
 import (
 	"context"
 	"log"
+	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"github.com/gin-gonic/gin"
 
@@ -81,8 +86,35 @@ func main() {
 		JWTSecret:       cfg.JWTSecret,
 	})
 
-	log.Printf("Server starting on :%s", cfg.ServerPort)
-	if err := r.Run(":" + cfg.ServerPort); err != nil {
-		log.Fatal(err)
+	srv := &http.Server{
+		Addr:    ":" + cfg.ServerPort,
+		Handler: r,
 	}
+
+	go func() {
+		log.Printf("Server starting on :%s", cfg.ServerPort)
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("server failed: %v", err)
+		}
+	}()
+
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	<-quit
+	log.Println("Shutdown signal received, shutting down gracefully...")
+
+	// Stop accepting new reading-progress cache writes from the periodic
+	// flusher before doing the final flush below.
+	cancelFlusher()
+
+	shutdownCtx, cancelShutdown := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancelShutdown()
+
+	if err := srv.Shutdown(shutdownCtx); err != nil {
+		log.Printf("Server forced to shutdown: %v", err)
+	}
+
+	readingService.FlushAll(shutdownCtx)
+
+	log.Println("Server exited gracefully")
 }

@@ -120,6 +120,14 @@ func (s *ReadingService) StartFlusher(ctx context.Context) {
 	log.Println("Reading progress flusher started (30s interval)")
 }
 
+// FlushAll performs a one-off flush of all cached reading progress to the
+// database. It is intended to be called during graceful shutdown, after the
+// periodic flusher has been stopped, to avoid losing in-memory progress.
+func (s *ReadingService) FlushAll(ctx context.Context) {
+	log.Println("Flushing all cached reading progress to database...")
+	s.flushToDB(ctx)
+}
+
 func (s *ReadingService) flushToDB(ctx context.Context) {
 	keys, err := s.rdb.Keys(ctx, "user:*:book:*:last_page").Result()
 	if err != nil {

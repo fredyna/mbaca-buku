@@ -34,13 +34,14 @@ func (s *AuthService) Register(ctx context.Context, req dto.RegisterRequest) (*d
 		Name:         req.Name,
 		Email:        req.Email,
 		PasswordHash: hash,
+		Role:         "user",
 	}
 
 	if err := s.userRepo.Create(ctx, user); err != nil {
 		return nil, fmt.Errorf("failed to create user: %w", err)
 	}
 
-	token, err := utils.GenerateToken(user.ID, s.jwtSecret)
+	token, err := utils.GenerateToken(user.ID, user.Role, s.jwtSecret)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate token: %w", err)
 	}
@@ -61,7 +62,7 @@ func (s *AuthService) Login(ctx context.Context, req dto.LoginRequest) (*dto.Aut
 		return nil, fmt.Errorf("invalid email or password")
 	}
 
-	token, err := utils.GenerateToken(user.ID, s.jwtSecret)
+	token, err := utils.GenerateToken(user.ID, user.Role, s.jwtSecret)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate token: %w", err)
 	}
@@ -87,6 +88,7 @@ func (s *AuthService) SeedDefaultUser(ctx context.Context) error {
 		Name:         "admin",
 		Email:        "admin@mbacabuku.com",
 		PasswordHash: hash,
+		Role:         "admin",
 	}
 
 	return s.userRepo.Create(ctx, user)

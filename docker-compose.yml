@@ -87,8 +87,10 @@ services:
       - ./nginx/mime.types:/etc/nginx/mime.types
       - frontend_build:/usr/share/nginx/html
     depends_on:
-      - backend
-      - frontend
+      backend:
+        condition: service_started
+      frontend:
+        condition: service_completed_successfully
 
 volumes:
   pgdata:
