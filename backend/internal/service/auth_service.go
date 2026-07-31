@@ -47,7 +47,7 @@ func (s *AuthService) Register(ctx context.Context, req dto.RegisterRequest) (*d
 	}
 
 	return &dto.AuthResponse{
-		User:  dto.UserResponse{ID: user.ID, Name: user.Name, Email: user.Email},
+		User:  dto.UserResponse{ID: user.ID, Name: user.Name, Email: user.Email, Role: user.Role},
 		Token: token,
 	}, nil
 }
@@ -68,7 +68,7 @@ func (s *AuthService) Login(ctx context.Context, req dto.LoginRequest) (*dto.Aut
 	}
 
 	return &dto.AuthResponse{
-		User:  dto.UserResponse{ID: user.ID, Name: user.Name, Email: user.Email},
+		User:  dto.UserResponse{ID: user.ID, Name: user.Name, Email: user.Email, Role: user.Role},
 		Token: token,
 	}, nil
 }

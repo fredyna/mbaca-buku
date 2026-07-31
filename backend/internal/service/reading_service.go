@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"strconv"
@@ -12,6 +13,15 @@ import (
 
 	"github.com/fredy/mbaca-buku/internal/repository"
 )
+
+// Reading status values stored in reading_progress.status. A book only becomes
+// StatusCompleted when the reader says so from the last page.
+const (
+	StatusReading   = "reading"
+	StatusCompleted = "completed"
+)
+
+var ErrInvalidStatus = errors.New("status must be reading or completed")
 
 type ReadingService struct {
 	progressRepo *repository.ProgressRepository
@@ -38,31 +48,63 @@ func (s *ReadingService) redisKey(userID, ebookID string) string {
 	return fmt.Sprintf("user:%s:book:%s:last_page", userID, ebookID)
 }
 
-func (s *ReadingService) OpenBook(ctx context.Context, userID, ebookID string) (int, error) {
+// OpenBook records the visit and reports where the reader left off, along with
+// the status they last chose, so the reader can render the right completion
+// control without a second request.
+func (s *ReadingService) OpenBook(ctx context.Context, userID, ebookID string) (int, string, error) {
 	_, err := s.ebookRepo.GetByID(ctx, ebookID)
 	if err != nil {
-		return 0, fmt.Errorf("ebook not found")
+		return 0, "", fmt.Errorf("ebook not found")
 	}
 
 	_ = s.historyRepo.LogOpen(ctx, userID, ebookID)
 
 	lastPage := 1
+	status := StatusReading
+
+	progress, err := s.progressRepo.GetByUserAndEbook(ctx, userID, ebookID)
+	if err == nil && progress != nil {
+		lastPage = progress.LastPage
+		status = progress.Status
+	} else {
+		_ = s.progressRepo.Upsert(ctx, userID, ebookID, 1, StatusReading)
+	}
+
+	// The cache holds pages that have not been flushed yet, so it wins over the
+	// stored page whenever it is present.
 	cached, err := s.rdb.Get(ctx, s.redisKey(userID, ebookID)).Result()
 	if err == nil {
 		if p, err := strconv.Atoi(cached); err == nil {
 			lastPage = p
 		}
 	} else {
-		progress, err := s.progressRepo.GetByUserAndEbook(ctx, userID, ebookID)
-		if err == nil && progress != nil {
-			lastPage = progress.LastPage
-			s.rdb.Set(ctx, s.redisKey(userID, ebookID), lastPage, 24*time.Hour)
-		} else {
-			_ = s.progressRepo.Upsert(ctx, userID, ebookID, 1, "reading")
-		}
+		s.rdb.Set(ctx, s.redisKey(userID, ebookID), lastPage, 24*time.Hour)
 	}
 
-	return lastPage, nil
+	return lastPage, status, nil
+}
+
+// SetStatus records an explicit completion decision by the reader. The saved
+// page is left untouched so a finished book reopens where it was left.
+func (s *ReadingService) SetStatus(ctx context.Context, userID, ebookID, status string) (int, error) {
+	if status != StatusReading && status != StatusCompleted {
+		return 0, ErrInvalidStatus
+	}
+
+	if _, err := s.ebookRepo.GetByID(ctx, ebookID); err != nil {
+		return 0, fmt.Errorf("ebook not found")
+	}
+
+	page, _, err := s.GetProgress(ctx, userID, ebookID)
+	if err != nil {
+		return 0, err
+	}
+
+	if err := s.progressRepo.Upsert(ctx, userID, ebookID, page, status); err != nil {
+		return 0, err
+	}
+
+	return page, nil
 }
 
 func (s *ReadingService) GetProgress(ctx context.Context, userID, ebookID string) (int, string, error) {
@@ -70,7 +112,7 @@ func (s *ReadingService) GetProgress(ctx context.Context, userID, ebookID string
 	if err == nil {
 		if p, err := strconv.Atoi(cached); err == nil {
 			progress, _ := s.progressRepo.GetByUserAndEbook(ctx, userID, ebookID)
-			status := "reading"
+			status := StatusReading
 			if progress != nil {
 				status = progress.Status
 			}
@@ -80,7 +122,7 @@ func (s *ReadingService) GetProgress(ctx context.Context, userID, ebookID string
 
 	progress, err := s.progressRepo.GetByUserAndEbook(ctx, userID, ebookID)
 	if err != nil || progress == nil {
-		return 1, "reading", nil
+		return 1, StatusReading, nil
 	}
 
 	s.rdb.Set(ctx, s.redisKey(userID, ebookID), progress.LastPage, 24*time.Hour)
@@ -93,13 +135,17 @@ func (s *ReadingService) UpdateProgress(ctx context.Context, userID, ebookID str
 		return fmt.Errorf("ebook not found")
 	}
 
-	s.rdb.Set(ctx, s.redisKey(userID, ebookID), page, 24*time.Hour)
-
-	status := "reading"
-	if page >= ebook.TotalPages {
-		status = "completed"
-		return s.progressRepo.Upsert(ctx, userID, ebookID, page, status)
+	// Keep progress within the document so no screen can report past 100%.
+	if page < 1 {
+		page = 1
 	}
+	if ebook.TotalPages > 0 && page > ebook.TotalPages {
+		page = ebook.TotalPages
+	}
+
+	// Only the page moves here. Reaching the last page does not finish a book:
+	// that is the reader's call, made through SetStatus.
+	s.rdb.Set(ctx, s.redisKey(userID, ebookID), page, 24*time.Hour)
 
 	return nil
 }
@@ -154,7 +200,7 @@ func (s *ReadingService) flushToDB(ctx context.Context) {
 		ebookID := parts[1]
 
 		progress, _ := s.progressRepo.GetByUserAndEbook(ctx, userID, ebookID)
-		status := "reading"
+		status := StatusReading
 		if progress != nil {
 			status = progress.Status
 		}

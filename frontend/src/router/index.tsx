@@ -7,6 +7,7 @@ import DashboardPage from '../pages/DashboardPage';
 import EbookListPage from '../pages/EbookListPage';
 import ReaderPage from '../pages/ReaderPage';
 import HistoryPage from '../pages/HistoryPage';
+import UsersPage from '../pages/UsersPage';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useAuth();
@@ -20,6 +21,22 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   }
 
   if (!user) return <Navigate to="/login" />;
+  return <>{children}</>;
+}
+
+function AdminRoute({ children }: { children: React.ReactNode }) {
+  const { user, isLoading } = useAuth();
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-gray-500">Loading...</div>
+      </div>
+    );
+  }
+
+  if (!user) return <Navigate to="/login" />;
+  if (user.role !== 'admin') return <Navigate to="/" />;
   return <>{children}</>;
 }
 
@@ -47,6 +64,14 @@ export default function AppRouter() {
           <Route path="/" element={<DashboardPage />} />
           <Route path="/ebooks" element={<EbookListPage />} />
           <Route path="/history" element={<HistoryPage />} />
+          <Route
+            path="/users"
+            element={
+              <AdminRoute>
+                <UsersPage />
+              </AdminRoute>
+            }
+          />
         </Route>
       </Routes>
     </BrowserRouter>

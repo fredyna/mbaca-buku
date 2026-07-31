@@ -70,6 +70,17 @@ func (s *MinIOStorage) GetPresignedURL(ctx context.Context, objectName string, e
 	return raw, nil
 }
 
+// OpenFile returns the stored object for reading. The returned value seeks, so
+// it can be handed to readers that need random access, and must be closed by
+// the caller.
+func (s *MinIOStorage) OpenFile(ctx context.Context, objectName string) (io.ReadSeekCloser, error) {
+	obj, err := s.client.GetObject(ctx, s.bucket, objectName, minio.GetObjectOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to open file: %w", err)
+	}
+	return obj, nil
+}
+
 func (s *MinIOStorage) DeleteFile(ctx context.Context, objectName string) error {
 	return s.client.RemoveObject(ctx, s.bucket, objectName, minio.RemoveObjectOptions{})
 }

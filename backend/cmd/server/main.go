@@ -71,6 +71,9 @@ func main() {
 	bookmarkService := service.NewBookmarkService(bookmarkRepo)
 	bookmarkHandler := handler.NewBookmarkHandler(bookmarkService)
 
+	adminUserService := service.NewAdminUserService(userRepo)
+	adminUserHandler := handler.NewAdminUserHandler(adminUserService)
+
 	flusherCtx, cancelFlusher := context.WithCancel(context.Background())
 	defer cancelFlusher()
 	readingService.StartFlusher(flusherCtx)
@@ -78,12 +81,13 @@ func main() {
 	r := gin.Default()
 
 	router.Setup(r, &router.RouterConfig{
-		AuthHandler:     authHandler,
-		EbookHandler:    ebookHandler,
-		ReadingHandler:  readingHandler,
-		HistoryHandler:  historyHandler,
-		BookmarkHandler: bookmarkHandler,
-		JWTSecret:       cfg.JWTSecret,
+		AuthHandler:      authHandler,
+		EbookHandler:     ebookHandler,
+		ReadingHandler:   readingHandler,
+		HistoryHandler:   historyHandler,
+		BookmarkHandler:  bookmarkHandler,
+		AdminUserHandler: adminUserHandler,
+		JWTSecret:        cfg.JWTSecret,
 	})
 
 	srv := &http.Server{

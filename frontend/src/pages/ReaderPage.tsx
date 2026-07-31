@@ -19,7 +19,14 @@ export default function ReaderPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(0);
   const [dualPage, setDualPage] = useState(window.innerWidth > 1024);
+  const [zoom, setZoom] = useState(1);
+  const [isCompleted, setIsCompleted] = useState(false);
   const [loading, setLoading] = useState(true);
+
+  const ZOOM_MIN = 0.5;
+  const ZOOM_MAX = 3;
+  const ZOOM_STEP = 0.25;
+  const clampZoom = (v: number) => Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, Math.round(v * 100) / 100));
 
   const saveProgress = useDebouncedCallback((page: number) => {
     if (id) progressApi.update(id, page);
@@ -60,6 +67,7 @@ export default function ReaderPage() {
         ]);
         setEbook(ebookData);
         setCurrentPage(openData.last_page);
+        setIsCompleted(openData.status === 'completed');
         setFileUrl(url);
       } catch {
         navigate('/');
@@ -77,6 +85,19 @@ export default function ReaderPage() {
     },
     [saveProgress]
   );
+
+  // Completion is the reader's own call, so the button drives the status
+  // directly. The optimistic flip is rolled back if the server refuses.
+  const handleToggleCompleted = useCallback(async () => {
+    if (!id) return;
+    const next = !isCompleted;
+    setIsCompleted(next);
+    try {
+      await progressApi.setStatus(id, next ? 'completed' : 'reading');
+    } catch {
+      setIsCompleted(!next);
+    }
+  }, [id, isCompleted]);
 
   if (loading) {
     return (
@@ -109,6 +130,7 @@ export default function ReaderPage() {
         fileUrl={fileUrl}
         currentPage={currentPage}
         dualPage={dualPage}
+        zoom={zoom}
         onPageChange={handlePageChange}
         onDocumentLoad={setTotalPages}
       />
@@ -119,6 +141,14 @@ export default function ReaderPage() {
         onPageChange={handlePageChange}
         dualPage={dualPage}
         onToggleDualPage={() => setDualPage(!dualPage)}
+        zoom={zoom}
+        onZoomIn={() => setZoom((z) => clampZoom(z + ZOOM_STEP))}
+        onZoomOut={() => setZoom((z) => clampZoom(z - ZOOM_STEP))}
+        onZoomReset={() => setZoom(1)}
+        canZoomIn={zoom < ZOOM_MAX}
+        canZoomOut={zoom > ZOOM_MIN}
+        isCompleted={isCompleted}
+        onToggleCompleted={handleToggleCompleted}
       />
     </div>
   );

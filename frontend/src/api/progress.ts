@@ -11,4 +11,8 @@ export const progressApi = {
   update: async (ebookId: string, page: number) => {
     await client.put(`/ebooks/${ebookId}/progress`, { page });
   },
+
+  setStatus: async (ebookId: string, status: 'reading' | 'completed') => {
+    await client.put(`/ebooks/${ebookId}/status`, { status });
+  },
 };

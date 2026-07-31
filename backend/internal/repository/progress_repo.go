@@ -24,6 +24,22 @@ func (r *ProgressRepository) Upsert(ctx context.Context, userID, ebookID string,
 	return err
 }
 
+// ClampToTotalPages caps saved progress for an ebook at its real page count
+// and marks anyone parked on the final page as finished. Needed after a page
+// count correction, where stored progress can point past the last page.
+func (r *ProgressRepository) ClampToTotalPages(ctx context.Context, ebookID string, totalPages int) (int64, error) {
+	query := `UPDATE reading_progress
+		SET last_page = LEAST(last_page, $1),
+		    status = CASE WHEN LEAST(last_page, $1) >= $1 THEN 'completed' ELSE 'reading' END,
+		    updated_at = NOW()
+		WHERE ebook_id = $2`
+	result, err := r.db.ExecContext(ctx, query, totalPages, ebookID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 func (r *ProgressRepository) GetByUserAndEbook(ctx context.Context, userID, ebookID string) (*model.ReadingProgress, error) {
 	p := &model.ReadingProgress{}
 	query := `SELECT id, user_id, ebook_id, last_page, status, updated_at

@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"errors"
 	"net/http"
 	"strconv"
 
@@ -18,6 +19,15 @@ type EbookHandler struct {
 
 func NewEbookHandler(ebookService *service.EbookService) *EbookHandler {
 	return &EbookHandler{ebookService: ebookService}
+}
+
+func mapEbookError(c *gin.Context, err error) {
+	switch {
+	case errors.Is(err, service.ErrForbidden):
+		utils.ErrorResponse(c, http.StatusForbidden, "FORBIDDEN", err.Error())
+	default:
+		utils.ErrorResponse(c, http.StatusNotFound, "NOT_FOUND", err.Error())
+	}
 }
 
 func (h *EbookHandler) Upload(c *gin.Context) {
@@ -39,6 +49,10 @@ func (h *EbookHandler) Upload(c *gin.Context) {
 
 	ebook, err := h.ebookService.Upload(c.Request.Context(), req, file, header.Size, fileName, userID)
 	if err != nil {
+		if errors.Is(err, service.ErrInvalidPDF) {
+			utils.ErrorResponse(c, http.StatusBadRequest, "VALIDATION_ERROR", err.Error())
+			return
+		}
 		utils.ErrorResponse(c, http.StatusInternalServerError, "UPLOAD_ERROR", err.Error())
 		return
 	}
@@ -48,9 +62,12 @@ func (h *EbookHandler) Upload(c *gin.Context) {
 
 func (h *EbookHandler) GetByID(c *gin.Context) {
 	id := c.Param("id")
-	ebook, err := h.ebookService.GetByID(c.Request.Context(), id)
+	userID := c.GetString("user_id")
+	isAdmin := c.GetString("role") == "admin"
+
+	ebook, err := h.ebookService.GetByID(c.Request.Context(), id, userID, isAdmin)
 	if err != nil {
-		utils.ErrorResponse(c, http.StatusNotFound, "NOT_FOUND", err.Error())
+		mapEbookError(c, err)
 		return
 	}
 	utils.SuccessResponse(c, http.StatusOK, ebook)
@@ -60,7 +77,10 @@ func (h *EbookHandler) List(c *gin.Context) {
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	perPage, _ := strconv.Atoi(c.DefaultQuery("per_page", "20"))
 
-	ebooks, total, err := h.ebookService.List(c.Request.Context(), page, perPage)
+	userID := c.GetString("user_id")
+	isAdmin := c.GetString("role") == "admin"
+
+	ebooks, total, err := h.ebookService.List(c.Request.Context(), page, perPage, userID, isAdmin)
 	if err != nil {
 		utils.ErrorResponse(c, http.StatusInternalServerError, "SERVER_ERROR", err.Error())
 		return
@@ -77,9 +97,12 @@ func (h *EbookHandler) Update(c *gin.Context) {
 		return
 	}
 
-	ebook, err := h.ebookService.Update(c.Request.Context(), id, req)
+	userID := c.GetString("user_id")
+	isAdmin := c.GetString("role") == "admin"
+
+	ebook, err := h.ebookService.Update(c.Request.Context(), id, req, userID, isAdmin)
 	if err != nil {
-		utils.ErrorResponse(c, http.StatusNotFound, "NOT_FOUND", err.Error())
+		mapEbookError(c, err)
 		return
 	}
 
@@ -88,8 +111,11 @@ func (h *EbookHandler) Update(c *gin.Context) {
 
 func (h *EbookHandler) Delete(c *gin.Context) {
 	id := c.Param("id")
-	if err := h.ebookService.Delete(c.Request.Context(), id); err != nil {
-		utils.ErrorResponse(c, http.StatusNotFound, "NOT_FOUND", err.Error())
+	userID := c.GetString("user_id")
+	isAdmin := c.GetString("role") == "admin"
+
+	if err := h.ebookService.Delete(c.Request.Context(), id, userID, isAdmin); err != nil {
+		mapEbookError(c, err)
 		return
 	}
 	utils.SuccessResponse(c, http.StatusOK, gin.H{"message": "ebook deleted"})
@@ -97,9 +123,12 @@ func (h *EbookHandler) Delete(c *gin.Context) {
 
 func (h *EbookHandler) GetFileURL(c *gin.Context) {
 	id := c.Param("id")
-	url, err := h.ebookService.GetFileURL(c.Request.Context(), id)
+	userID := c.GetString("user_id")
+	isAdmin := c.GetString("role") == "admin"
+
+	url, err := h.ebookService.GetFileURL(c.Request.Context(), id, userID, isAdmin)
 	if err != nil {
-		utils.ErrorResponse(c, http.StatusNotFound, "NOT_FOUND", err.Error())
+		mapEbookError(c, err)
 		return
 	}
 	utils.SuccessResponse(c, http.StatusOK, dto.EbookFileResponse{URL: url})

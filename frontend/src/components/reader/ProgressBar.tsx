@@ -1,10 +1,12 @@
+import { progressPercent } from '../../utils/progress';
+
 interface ProgressBarProps {
   currentPage: number;
   totalPages: number;
 }
 
 export default function ProgressBar({ currentPage, totalPages }: ProgressBarProps) {
-  const percent = totalPages > 0 ? Math.round((currentPage / totalPages) * 100) : 0;
+  const percent = progressPercent(currentPage, totalPages);
 
   return (
     <div className="flex items-center gap-3">

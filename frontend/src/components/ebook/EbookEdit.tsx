@@ -1,47 +1,50 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import Modal from '../common/Modal';
 import { ebooksApi } from '../../api/ebooks';
+import type { Ebook } from '../../api/ebooks';
 
-interface EbookUploadProps {
+interface EbookEditProps {
   isOpen: boolean;
+  ebook: Ebook | null;
   onClose: () => void;
   onSuccess: () => void;
 }
 
-export default function EbookUpload({ isOpen, onClose, onSuccess }: EbookUploadProps) {
+export default function EbookEdit({ isOpen, ebook, onClose, onSuccess }: EbookEditProps) {
   const [title, setTitle] = useState('');
   const [author, setAuthor] = useState('');
-  const [file, setFile] = useState<File | null>(null);
   const [isPrivate, setIsPrivate] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  useEffect(() => {
+    if (!isOpen || !ebook) return;
+    setTitle(ebook.title);
+    setAuthor(ebook.author);
+    setIsPrivate(ebook.is_private);
+    setError('');
+  }, [isOpen, ebook]);
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!file) return;
+    if (!ebook) return;
 
     setLoading(true);
     setError('');
 
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('title', title);
-    formData.append('author', author);
-    formData.append('is_private', String(isPrivate));
-
     try {
-      await ebooksApi.upload(formData);
-      setTitle('');
-      setAuthor('');
-      setFile(null);
-      setIsPrivate(true);
+      await ebooksApi.update(ebook.id, {
+        title,
+        author,
+        is_private: isPrivate,
+      });
       onSuccess();
       onClose();
     } catch (err: unknown) {
       const message =
         (err as { response?: { data?: { error?: { message?: string } } } })?.response?.data?.error
-          ?.message || 'Failed to upload ebook';
+          ?.message || 'Failed to update ebook';
       setError(message);
     } finally {
       setLoading(false);
@@ -49,7 +52,7 @@ export default function EbookUpload({ isOpen, onClose, onSuccess }: EbookUploadP
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Upload Ebook">
+    <Modal isOpen={isOpen} onClose={onClose} title="Edit Ebook">
       {error && <div className="bg-red-50 text-red-600 p-3 rounded mb-4 text-sm">{error}</div>}
 
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -72,16 +75,6 @@ export default function EbookUpload({ isOpen, onClose, onSuccess }: EbookUploadP
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">PDF File</label>
-          <input
-            type="file"
-            accept=".pdf"
-            onChange={(e) => setFile(e.target.files?.[0] || null)}
-            className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-            required
-          />
-        </div>
         <label className="flex items-start gap-2 cursor-pointer">
           <input
             type="checkbox"
@@ -96,13 +89,22 @@ export default function EbookUpload({ isOpen, onClose, onSuccess }: EbookUploadP
             </span>
           </span>
         </label>
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
-        >
-          {loading ? 'Uploading...' : 'Upload'}
-        </button>
+        <div className="flex justify-end gap-2 pt-2">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-4 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-50"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            disabled={loading}
+            className="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
+          >
+            {loading ? 'Saving...' : 'Save'}
+          </button>
+        </div>
       </form>
     </Modal>
   );

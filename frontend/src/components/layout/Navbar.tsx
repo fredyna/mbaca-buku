@@ -5,6 +5,7 @@ import { useAuth } from '../../context/AuthContext';
 export default function Navbar() {
   const { user, logout } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const isAdmin = user?.role === 'admin';
 
   return (
     <nav className="bg-white border-b border-gray-200">
@@ -18,6 +19,9 @@ export default function Navbar() {
               <Link to="/" className="text-gray-600 hover:text-gray-900">Dashboard</Link>
               <Link to="/ebooks" className="text-gray-600 hover:text-gray-900">Ebooks</Link>
               <Link to="/history" className="text-gray-600 hover:text-gray-900">History</Link>
+              {isAdmin && (
+                <Link to="/users" className="text-gray-600 hover:text-gray-900">Users</Link>
+              )}
             </div>
           </div>
           <div className="hidden sm:flex items-center gap-4">
@@ -68,6 +72,15 @@ export default function Navbar() {
           >
             History
           </Link>
+          {isAdmin && (
+            <Link
+              to="/users"
+              onClick={() => setMobileOpen(false)}
+              className="block py-2 text-gray-600"
+            >
+              Users
+            </Link>
+          )}
           <div className="pt-2 border-t border-gray-100 flex justify-between items-center">
             <span className="text-sm text-gray-600">{user?.name}</span>
             <button onClick={logout} className="text-sm text-red-600">

@@ -7,6 +7,9 @@ export interface Ebook {
   cover_url: string;
   file_size: number;
   total_pages: number;
+  uploaded_by: string;
+  uploaded_by_name: string;
+  is_private: boolean;
   created_at: string;
 }
 
@@ -34,7 +37,7 @@ export const ebooksApi = {
     return res.data.data;
   },
 
-  update: async (id: string, data: { title: string; author: string }) => {
+  update: async (id: string, data: { title: string; author: string; is_private: boolean }) => {
     const res = await client.put<{ success: boolean; data: Ebook }>(`/ebooks/${id}`, data);
     return res.data.data;
   },

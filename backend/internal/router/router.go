@@ -8,12 +8,13 @@ import (
 )
 
 type RouterConfig struct {
-	AuthHandler     *handler.AuthHandler
-	EbookHandler    *handler.EbookHandler
-	ReadingHandler  *handler.ReadingHandler
-	HistoryHandler  *handler.HistoryHandler
-	BookmarkHandler *handler.BookmarkHandler
-	JWTSecret       string
+	AuthHandler      *handler.AuthHandler
+	EbookHandler     *handler.EbookHandler
+	ReadingHandler   *handler.ReadingHandler
+	HistoryHandler   *handler.HistoryHandler
+	BookmarkHandler  *handler.BookmarkHandler
+	AdminUserHandler *handler.AdminUserHandler
+	JWTSecret        string
 }
 
 func Setup(r *gin.Engine, cfg *RouterConfig) {
@@ -39,14 +40,15 @@ func Setup(r *gin.Engine, cfg *RouterConfig) {
 		{
 			ebooks.GET("", cfg.EbookHandler.List)
 			ebooks.GET("/:id", cfg.EbookHandler.GetByID)
-			ebooks.POST("", middleware.AdminMiddleware(), cfg.EbookHandler.Upload)
-			ebooks.PUT("/:id", middleware.AdminMiddleware(), cfg.EbookHandler.Update)
-			ebooks.DELETE("/:id", middleware.AdminMiddleware(), cfg.EbookHandler.Delete)
+			ebooks.POST("", cfg.EbookHandler.Upload)
+			ebooks.PUT("/:id", cfg.EbookHandler.Update)
+			ebooks.DELETE("/:id", cfg.EbookHandler.Delete)
 			ebooks.GET("/:id/file", cfg.EbookHandler.GetFileURL)
 
 			ebooks.POST("/:id/open", cfg.ReadingHandler.OpenBook)
 			ebooks.GET("/:id/progress", cfg.ReadingHandler.GetProgress)
 			ebooks.PUT("/:id/progress", cfg.ReadingHandler.UpdateProgress)
+			ebooks.PUT("/:id/status", cfg.ReadingHandler.SetStatus)
 
 			ebooks.GET("/:id/bookmarks", cfg.BookmarkHandler.List)
 			ebooks.POST("/:id/bookmarks", cfg.BookmarkHandler.Create)
@@ -54,5 +56,14 @@ func Setup(r *gin.Engine, cfg *RouterConfig) {
 
 		protected.GET("/history", cfg.HistoryHandler.GetHistory)
 		protected.DELETE("/bookmarks/:id", cfg.BookmarkHandler.Delete)
+
+		admin := protected.Group("/admin", middleware.AdminMiddleware())
+		{
+			admin.GET("/users", cfg.AdminUserHandler.List)
+			admin.POST("/users", cfg.AdminUserHandler.Create)
+			admin.PUT("/users/:id", cfg.AdminUserHandler.Update)
+			admin.PUT("/users/:id/password", cfg.AdminUserHandler.ResetPassword)
+			admin.DELETE("/users/:id", cfg.AdminUserHandler.Delete)
+		}
 	}
 }

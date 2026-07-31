@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -22,7 +23,7 @@ func (h *ReadingHandler) OpenBook(c *gin.Context) {
 	userID := c.GetString("user_id")
 	ebookID := c.Param("id")
 
-	lastPage, err := h.readingService.OpenBook(c.Request.Context(), userID, ebookID)
+	lastPage, status, err := h.readingService.OpenBook(c.Request.Context(), userID, ebookID)
 	if err != nil {
 		utils.ErrorResponse(c, http.StatusNotFound, "NOT_FOUND", err.Error())
 		return
@@ -31,6 +32,36 @@ func (h *ReadingHandler) OpenBook(c *gin.Context) {
 	utils.SuccessResponse(c, http.StatusOK, dto.OpenBookResponse{
 		EbookID:  ebookID,
 		LastPage: lastPage,
+		Status:   status,
+	})
+}
+
+// SetStatus records the reader's explicit decision to finish a book, or to put
+// it back in progress.
+func (h *ReadingHandler) SetStatus(c *gin.Context) {
+	userID := c.GetString("user_id")
+	ebookID := c.Param("id")
+
+	var req dto.SetStatusRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		utils.ErrorResponse(c, http.StatusBadRequest, "VALIDATION_ERROR", err.Error())
+		return
+	}
+
+	lastPage, err := h.readingService.SetStatus(c.Request.Context(), userID, ebookID, req.Status)
+	if err != nil {
+		if errors.Is(err, service.ErrInvalidStatus) {
+			utils.ErrorResponse(c, http.StatusBadRequest, "VALIDATION_ERROR", err.Error())
+			return
+		}
+		utils.ErrorResponse(c, http.StatusNotFound, "NOT_FOUND", err.Error())
+		return
+	}
+
+	utils.SuccessResponse(c, http.StatusOK, dto.ProgressResponse{
+		EbookID:  ebookID,
+		LastPage: lastPage,
+		Status:   req.Status,
 	})
 }
 

@@ -12,6 +12,7 @@ interface PdfReaderProps {
   fileUrl: string;
   currentPage: number;
   dualPage: boolean;
+  zoom: number;
   onPageChange: (page: number) => void;
   onDocumentLoad: (numPages: number) => void;
 }
@@ -20,6 +21,7 @@ export default function PdfReader({
   fileUrl,
   currentPage,
   dualPage,
+  zoom,
   onPageChange,
   onDocumentLoad,
 }: PdfReaderProps) {
@@ -50,7 +52,8 @@ export default function PdfReader({
     onDocumentLoad(n);
   };
 
-  const pageWidth = dualPage ? (containerWidth - 16) / 2 : containerWidth;
+  const basePageWidth = dualPage ? (containerWidth - 16) / 2 : containerWidth;
+  const pageWidth = basePageWidth * zoom;
 
   return (
     <div id="pdf-container" className="flex-1 overflow-auto bg-gray-100 flex justify-center p-4">
