@@ -1,5 +1,10 @@
 # Mbaca Buku — Design Specification
 
+> **Sebagian usang.** Sejak 2026-08-03 storage berpindah dari MinIO ke
+> Cloudflare R2, dan nginx dipublikasikan di port 6900. Lihat
+> [2026-08-03-migrasi-r2-design.md](2026-08-03-migrasi-r2-design.md).
+> Dokumen ini dipertahankan sebagai catatan desain awal.
+
 ## Overview
 
 Mbaca Buku is a full-stack ebook reading platform where users can manage PDF ebooks, read them with a realistic book-like experience, automatically track reading progress, and maintain reading history.

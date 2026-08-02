@@ -8,8 +8,10 @@ backend/vendor/
 frontend/node_modules/
 frontend/dist/
 
-# Environment
-.env
+# Environment — ignore every variant (.env.local, .env.bak, ...) so a stray
+# copy of real credentials cannot be committed by accident.
+.env*
+!.env.example
 
 # IDE
 .idea/
