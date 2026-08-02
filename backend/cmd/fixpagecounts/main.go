@@ -34,7 +34,7 @@ func main() {
 	}
 	defer db.Close()
 
-	minioStorage, err := storage.NewMinIOClient(cfg)
+	fileStorage, err := storage.NewR2Client(cfg)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -50,7 +50,7 @@ func main() {
 
 	var fixed, skipped, failed int
 	for _, e := range ebooks {
-		obj, err := minioStorage.OpenFile(ctx, e.FileURL)
+		obj, err := fileStorage.OpenFile(ctx, e.FileURL)
 		if err != nil {
 			log.Printf("%q: cannot open file: %v", e.Title, err)
 			failed++

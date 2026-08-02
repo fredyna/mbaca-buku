@@ -40,7 +40,7 @@ func main() {
 	}
 	defer rdb.Close()
 
-	minioStorage, err := storage.NewMinIOClient(cfg)
+	fileStorage, err := storage.NewR2Client(cfg)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -57,7 +57,7 @@ func main() {
 	authHandler := handler.NewAuthHandler(authService)
 
 	ebookRepo := repository.NewEbookRepository(db)
-	ebookService := service.NewEbookService(ebookRepo, minioStorage)
+	ebookService := service.NewEbookService(ebookRepo, fileStorage)
 	ebookHandler := handler.NewEbookHandler(ebookService)
 
 	progressRepo := repository.NewProgressRepository(db)

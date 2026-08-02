@@ -22,10 +22,10 @@ var (
 
 type EbookService struct {
 	ebookRepo *repository.EbookRepository
-	storage   *storage.MinIOStorage
+	storage   *storage.R2Storage
 }
 
-func NewEbookService(ebookRepo *repository.EbookRepository, storage *storage.MinIOStorage) *EbookService {
+func NewEbookService(ebookRepo *repository.EbookRepository, storage *storage.R2Storage) *EbookService {
 	return &EbookService{ebookRepo: ebookRepo, storage: storage}
 }
 

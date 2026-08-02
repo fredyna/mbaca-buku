@@ -19,9 +19,13 @@ server {
         client_max_body_size 100M;
     }
 
-    location /minio/ {
-        proxy_pass http://minio:9000/;
-        proxy_set_header Host minio:9000;
+    # The backend rewrites presigned R2 URLs to /r2/... so the browser stays
+    # same-origin and never sees the account ID. Host must be the R2 endpoint:
+    # it is signed into the SigV4 signature, and R2 rejects anything else.
+    location /r2/ {
+        proxy_pass https://${R2_ENDPOINT}/;
+        proxy_set_header Host ${R2_ENDPOINT};
+        proxy_ssl_server_name on;
     }
 
     location / {
