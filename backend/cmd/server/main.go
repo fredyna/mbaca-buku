@@ -88,6 +88,7 @@ func main() {
 		BookmarkHandler:  bookmarkHandler,
 		AdminUserHandler: adminUserHandler,
 		JWTSecret:        cfg.JWTSecret,
+		AllowedOrigins:   cfg.AllowedOrigins,
 	})
 
 	srv := &http.Server{

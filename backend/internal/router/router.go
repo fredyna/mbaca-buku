@@ -15,10 +15,11 @@ type RouterConfig struct {
 	BookmarkHandler  *handler.BookmarkHandler
 	AdminUserHandler *handler.AdminUserHandler
 	JWTSecret        string
+	AllowedOrigins   []string
 }
 
 func Setup(r *gin.Engine, cfg *RouterConfig) {
-	r.Use(middleware.CORSMiddleware())
+	r.Use(middleware.CORSMiddleware(cfg.AllowedOrigins))
 
 	api := r.Group("/api")
 

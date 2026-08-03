@@ -5,9 +5,15 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func CORSMiddleware() gin.HandlerFunc {
+// CORSMiddleware restricts browser requests to allowedOrigins.
+//
+// Browsers attach an Origin header to every POST, including same-origin ones,
+// and gin-contrib/cors rejects an unlisted origin with a bare 403 before the
+// handler ever runs. A hardcoded localhost list therefore broke logins on every
+// deployment not served from localhost — so the list comes from configuration.
+func CORSMiddleware(allowedOrigins []string) gin.HandlerFunc {
 	return cors.New(cors.Config{
-		AllowOrigins:     []string{"http://localhost", "http://localhost:5173", "http://localhost:6900"},
+		AllowOrigins:     allowedOrigins,
 		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
 		ExposeHeaders:    []string{"Content-Length"},
