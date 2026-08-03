@@ -1,20 +1,22 @@
 services:
+  # Not published to the host: the backend reaches Redis over the Compose
+  # network as redis:6379. Publishing it collided with whatever already held
+  # 6379 on the production host, and exposed an unauthenticated Redis to every
+  # network that host is on.
   redis:
     image: redis:7-alpine
-    ports:
-      - "6379:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
       timeout: 5s
       retries: 5
 
+  # Also unpublished: nginx proxies to backend:8080 over the Compose network,
+  # so a host port would only offer a way to reach the API around nginx.
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    ports:
-      - "8080:8080"
     environment:
       SERVER_PORT: ${SERVER_PORT}
       DATABASE_URL: ${DATABASE_URL}
