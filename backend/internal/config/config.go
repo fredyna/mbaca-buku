@@ -7,9 +7,10 @@ import (
 )
 
 type Config struct {
-	ServerPort  string
-	DatabaseURL string
-	RedisURL    string
+	ServerPort     string
+	DatabaseURL    string
+	RedisURL       string
+	AllowedOrigins []string
 	R2Endpoint  string
 	R2AccessKey string
 	R2SecretKey string
@@ -19,9 +20,10 @@ type Config struct {
 
 func Load() *Config {
 	return &Config{
-		ServerPort:  getEnv("SERVER_PORT", "8080"),
-		DatabaseURL: databaseURL(),
-		RedisURL:    getEnv("REDIS_URL", "redis://localhost:6379/0"),
+		ServerPort:     getEnv("SERVER_PORT", "8080"),
+		DatabaseURL:    databaseURL(),
+		RedisURL:       getEnv("REDIS_URL", "redis://localhost:6379/0"),
+		AllowedOrigins: allowedOrigins(),
 		R2Endpoint:  r2Endpoint(),
 		R2AccessKey: mustEnv("R2_ACCESS_KEY_ID"),
 		R2SecretKey: mustEnv("R2_SECRET_ACCESS_KEY"),
@@ -42,6 +44,24 @@ func r2Endpoint() string {
 			"— drop the https:// prefix and any /<bucket> suffix (the bucket belongs in R2_BUCKET); got %q", v)
 	}
 	return v
+}
+
+// allowedOrigins lists the browser origins the API answers. The default covers
+// local development only — the Vite dev server and the Compose stack — so any
+// other deployment must name its own origin, scheme and port included.
+func allowedOrigins() []string {
+	raw := getEnv("ALLOWED_ORIGINS", "http://localhost:5173,http://localhost:6900")
+
+	var out []string
+	for _, o := range strings.Split(raw, ",") {
+		if o = strings.TrimSpace(o); o != "" {
+			out = append(out, o)
+		}
+	}
+	if len(out) == 0 {
+		log.Fatal("ALLOWED_ORIGINS was set but contained no origins")
+	}
+	return out
 }
 
 // databaseURL reads the Postgres connection string. Supabase's dashboard offers
