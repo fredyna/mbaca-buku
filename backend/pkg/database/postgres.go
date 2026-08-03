@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"time"
 
 	_ "github.com/lib/pq"
 
@@ -13,7 +14,7 @@ import (
 )
 
 func Connect(cfg *config.Config) (*sql.DB, error) {
-	db, err := sql.Open("postgres", cfg.DBDSN())
+	db, err := sql.Open("postgres", cfg.DatabaseURL)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open database: %w", err)
 	}
@@ -24,6 +25,13 @@ func Connect(cfg *config.Config) (*sql.DB, error) {
 
 	db.SetMaxOpenConns(25)
 	db.SetMaxIdleConns(5)
+
+	// The database now sits behind a connection pooler across the network,
+	// which closes idle connections on its own schedule. Without these bounds
+	// database/sql would hand a query a connection the pooler already dropped,
+	// surfacing as sporadic "unexpected EOF" errors.
+	db.SetConnMaxLifetime(30 * time.Minute)
+	db.SetConnMaxIdleTime(5 * time.Minute)
 
 	log.Println("Connected to PostgreSQL")
 	return db, nil

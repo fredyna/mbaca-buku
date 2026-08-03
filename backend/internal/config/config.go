@@ -8,12 +8,7 @@ import (
 
 type Config struct {
 	ServerPort  string
-	DBHost      string
-	DBPort      string
-	DBUser      string
-	DBPassword  string
-	DBName      string
-	DBSSLMode   string
+	DatabaseURL string
 	RedisURL    string
 	R2Endpoint  string
 	R2AccessKey string
@@ -25,12 +20,7 @@ type Config struct {
 func Load() *Config {
 	return &Config{
 		ServerPort:  getEnv("SERVER_PORT", "8080"),
-		DBHost:      getEnv("DB_HOST", "localhost"),
-		DBPort:      getEnv("DB_PORT", "5432"),
-		DBUser:      getEnv("DB_USER", "mbaca"),
-		DBPassword:  getEnv("DB_PASSWORD", "mbaca_secret"),
-		DBName:      getEnv("DB_NAME", "mbaca_buku"),
-		DBSSLMode:   getEnv("DB_SSLMODE", "disable"),
+		DatabaseURL: databaseURL(),
 		RedisURL:    getEnv("REDIS_URL", "redis://localhost:6379/0"),
 		R2Endpoint:  r2Endpoint(),
 		R2AccessKey: mustEnv("R2_ACCESS_KEY_ID"),
@@ -54,13 +44,17 @@ func r2Endpoint() string {
 	return v
 }
 
-func (c *Config) DBDSN() string {
-	return "host=" + c.DBHost +
-		" port=" + c.DBPort +
-		" user=" + c.DBUser +
-		" password=" + c.DBPassword +
-		" dbname=" + c.DBName +
-		" sslmode=" + c.DBSSLMode
+// databaseURL reads the Postgres connection string. Supabase's dashboard offers
+// several connection variants across separate tabs, and pasting the wrong one
+// surfaces as an opaque driver error — so check the scheme here, where we can
+// name what is expected.
+func databaseURL() string {
+	v := mustEnv("DATABASE_URL")
+	if !strings.HasPrefix(v, "postgres://") && !strings.HasPrefix(v, "postgresql://") {
+		log.Fatal("DATABASE_URL must be a postgres:// or postgresql:// connection string, " +
+			"e.g. the Session pooler URI from the Supabase dashboard")
+	}
+	return v
 }
 
 // mustEnv reads a setting that has no sensible default. R2 credentials and the
