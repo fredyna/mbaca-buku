@@ -6,7 +6,7 @@ services:
   redis:
     image: redis:7-alpine
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: [ "CMD", "redis-cli", "ping" ]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -41,7 +41,7 @@ services:
   nginx:
     image: nginx:alpine
     ports:
-      - "6900:80"
+      - "80"
     environment:
       R2_ENDPOINT: ${R2_ENDPOINT}
       # Only substitute R2_* placeholders, so nginx's own $host/$uri variables
