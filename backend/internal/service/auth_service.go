@@ -2,20 +2,33 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/fredy/mbaca-buku/internal/dto"
 	"github.com/fredy/mbaca-buku/internal/model"
-	"github.com/fredy/mbaca-buku/internal/repository"
 	"github.com/fredy/mbaca-buku/pkg/utils"
 )
 
+var (
+	ErrInvalidOldPassword = errors.New("old password is incorrect")
+	ErrSamePassword       = errors.New("new password must be different from the old password")
+)
+
+// UserStore is the subset of the user repository that AuthService depends on.
+type UserStore interface {
+	Create(ctx context.Context, user *model.User) error
+	GetByEmail(ctx context.Context, email string) (*model.User, error)
+	GetByID(ctx context.Context, id string) (*model.User, error)
+	UpdatePassword(ctx context.Context, id, hash string) error
+}
+
 type AuthService struct {
-	userRepo  *repository.UserRepository
+	userRepo  UserStore
 	jwtSecret string
 }
 
-func NewAuthService(userRepo *repository.UserRepository, jwtSecret string) *AuthService {
+func NewAuthService(userRepo UserStore, jwtSecret string) *AuthService {
 	return &AuthService{userRepo: userRepo, jwtSecret: jwtSecret}
 }
 
@@ -71,6 +84,28 @@ func (s *AuthService) Login(ctx context.Context, req dto.LoginRequest) (*dto.Aut
 		User:  dto.UserResponse{ID: user.ID, Name: user.Name, Email: user.Email, Role: user.Role},
 		Token: token,
 	}, nil
+}
+
+func (s *AuthService) ChangePassword(ctx context.Context, userID string, req dto.ChangePasswordRequest) error {
+	user, err := s.userRepo.GetByID(ctx, userID)
+	if err != nil {
+		return err
+	}
+
+	if !utils.CheckPassword(user.PasswordHash, req.OldPassword) {
+		return ErrInvalidOldPassword
+	}
+
+	if utils.CheckPassword(user.PasswordHash, req.NewPassword) {
+		return ErrSamePassword
+	}
+
+	hash, err := utils.HashPassword(req.NewPassword)
+	if err != nil {
+		return fmt.Errorf("failed to hash password: %w", err)
+	}
+
+	return s.userRepo.UpdatePassword(ctx, userID, hash)
 }
 
 func (s *AuthService) SeedDefaultUser(ctx context.Context) error {

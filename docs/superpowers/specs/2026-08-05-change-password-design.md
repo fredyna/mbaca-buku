@@ -171,25 +171,29 @@ Membungkus `components/common/Modal`, dengan bentuk yang mengikuti
 `useEffect` saat modal dibuka, pesan error diambil dari
 `err.response.data.error.message` dengan teks fallback.
 
-Isi form: **Password Lama**, **Password Baru** (`minLength={5}`, disertai
-keterangan "Minimal 5 karakter"), dan **Konfirmasi Password Baru**. Sebelum
-memanggil API, form memeriksa `newPassword === confirmPassword` dan menampilkan
-"Konfirmasi password tidak cocok" tanpa request kalau berbeda.
+Teks antarmuka memakai bahasa Inggris, mengikuti seluruh UI yang sudah ada.
 
-Setelah sukses, form diganti pesan hijau "Password berhasil diubah" dan modal
-menutup sendiri setelah 1,5 detik; menutupnya lebih awal lewat tombol Batal atau
-backdrop juga boleh. Timer dibersihkan saat komponen unmount. Tidak ada token,
-`localStorage`, maupun state `AuthContext` yang disentuh — user tetap login.
+Isi form: **Current Password**, **New Password** (`minLength={5}`, disertai
+keterangan "Minimum 5 characters."), dan **Confirm New Password**. Sebelum
+memanggil API, form memeriksa `newPassword === confirmPassword` dan menampilkan
+"Password confirmation does not match" tanpa request kalau berbeda.
+
+Setelah sukses, form diganti pesan hijau "Password changed successfully." dan
+modal menutup sendiri setelah 1,5 detik; menutupnya lebih awal lewat tombol
+Cancel atau backdrop juga boleh. Timer dibersihkan saat komponen unmount dan
+saat modal dibuka kembali, supaya timer dari submit sebelumnya tidak menutup
+modal yang baru dibuka. Tidak ada token, `localStorage`, maupun state
+`AuthContext` yang disentuh — user tetap login.
 
 ### `src/components/layout/Navbar.tsx`
 
-Pada layout desktop, nama user menjadi tombol pembuka dropdown berisi "Ganti
+Pada layout desktop, nama user menjadi tombol pembuka dropdown berisi "Change
 Password" dan "Logout"; tombol logout yang berdiri sendiri dipindahkan ke
 dalamnya. Dropdown ditutup lewat overlay `fixed inset-0` transparan, idiom yang
 sama dengan backdrop di `Modal.tsx`, dan juga ditutup saat salah satu itemnya
 dipilih.
 
-Pada menu mobile, "Ganti Password" ditambahkan ke blok bawah yang sudah memuat
+Pada menu mobile, "Change Password" ditambahkan ke blok bawah yang sudah memuat
 nama user dan tombol logout. Membukanya menutup menu mobile.
 
 Navbar memegang state `isChangePasswordOpen` dan merender `ChangePasswordModal`.
