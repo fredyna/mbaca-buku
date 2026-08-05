@@ -41,6 +41,7 @@ func Setup(r *gin.Engine, cfg *RouterConfig) {
 		ebooks := protected.Group("/ebooks")
 		{
 			ebooks.GET("", cfg.EbookHandler.List)
+			ebooks.GET("/authors", cfg.EbookHandler.ListAuthors)
 			ebooks.GET("/:id", cfg.EbookHandler.GetByID)
 			ebooks.POST("", cfg.EbookHandler.Upload)
 			ebooks.PUT("/:id", cfg.EbookHandler.Update)

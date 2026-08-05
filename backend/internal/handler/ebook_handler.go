@@ -73,20 +73,50 @@ func (h *EbookHandler) GetByID(c *gin.Context) {
 	utils.SuccessResponse(c, http.StatusOK, ebook)
 }
 
+// queryInt reads an integer query param, yielding 0 when it is missing or not
+// a number. The service turns 0 into the documented default.
+func queryInt(c *gin.Context, key string) int {
+	v, _ := strconv.Atoi(c.Query(key))
+	return v
+}
+
 func (h *EbookHandler) List(c *gin.Context) {
-	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
-	perPage, _ := strconv.Atoi(c.DefaultQuery("per_page", "20"))
+	query := dto.EbookListQuery{
+		Page:       queryInt(c, "page"),
+		PerPage:    queryInt(c, "per_page"),
+		Query:      c.Query("q"),
+		Author:     c.Query("author"),
+		Visibility: c.Query("visibility"),
+		Sort:       c.Query("sort"),
+	}
 
 	userID := c.GetString("user_id")
 	isAdmin := c.GetString("role") == "admin"
 
-	ebooks, total, err := h.ebookService.List(c.Request.Context(), page, perPage, userID, isAdmin)
+	ebooks, total, err := h.ebookService.List(c.Request.Context(), query, userID, isAdmin)
 	if err != nil {
 		utils.ErrorResponse(c, http.StatusInternalServerError, "SERVER_ERROR", err.Error())
 		return
 	}
 
+	// Echo back the values the service actually used, so the client can page
+	// correctly even when it asked for something out of range.
+	page, perPage := service.NormalizePaging(query.Page, query.PerPage)
 	utils.PaginatedResponse(c, ebooks, page, perPage, total)
+}
+
+// ListAuthors backs the author filter on the ebook list page.
+func (h *EbookHandler) ListAuthors(c *gin.Context) {
+	userID := c.GetString("user_id")
+	isAdmin := c.GetString("role") == "admin"
+
+	authors, err := h.ebookService.ListAuthors(c.Request.Context(), userID, isAdmin)
+	if err != nil {
+		utils.ErrorResponse(c, http.StatusInternalServerError, "SERVER_ERROR", err.Error())
+		return
+	}
+
+	utils.SuccessResponse(c, http.StatusOK, authors)
 }
 
 func (h *EbookHandler) Update(c *gin.Context) {

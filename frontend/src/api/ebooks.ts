@@ -19,10 +19,40 @@ export interface EbookListResponse {
   meta: { page: number; per_page: number; total: number };
 }
 
+export type EbookVisibility = 'all' | 'public' | 'private';
+export type EbookSort = 'title' | 'latest';
+
+export interface EbookListParams {
+  page?: number;
+  perPage?: number;
+  q?: string;
+  author?: string;
+  visibility?: EbookVisibility;
+  sort?: EbookSort;
+}
+
+/** The ebook grid fits eight cards per page; the API defaults to the same. */
+export const EBOOKS_PER_PAGE = 8;
+
 export const ebooksApi = {
-  list: async (page = 1, perPage = 20) => {
-    const res = await client.get<EbookListResponse>(`/ebooks?page=${page}&per_page=${perPage}`);
+  list: async (params: EbookListParams = {}) => {
+    const search = new URLSearchParams({
+      page: String(params.page ?? 1),
+      per_page: String(params.perPage ?? EBOOKS_PER_PAGE),
+    });
+    if (params.q) search.set('q', params.q);
+    if (params.author) search.set('author', params.author);
+    if (params.visibility && params.visibility !== 'all') search.set('visibility', params.visibility);
+    if (params.sort) search.set('sort', params.sort);
+
+    const res = await client.get<EbookListResponse>(`/ebooks?${search.toString()}`);
     return { ebooks: res.data.data || [], meta: res.data.meta };
+  },
+
+  // Authors across every ebook the user may see, for the list page filter.
+  listAuthors: async () => {
+    const res = await client.get<{ success: boolean; data: string[] }>('/ebooks/authors');
+    return res.data.data || [];
   },
 
   getById: async (id: string) => {

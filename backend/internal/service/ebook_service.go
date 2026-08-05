@@ -91,14 +91,38 @@ func (s *EbookService) GetByID(ctx context.Context, id, userID string, isAdmin b
 	return e, nil
 }
 
-func (s *EbookService) List(ctx context.Context, page, perPage int, userID string, isAdmin bool) ([]*model.Ebook, int, error) {
+const (
+	// DefaultPerPage matches the ebook grid, which fits eight cards.
+	DefaultPerPage = 8
+	MaxPerPage     = 50
+)
+
+// NormalizePaging clamps client-supplied paging into the range the API serves.
+// Out-of-range values fall back to the defaults instead of failing the request.
+func NormalizePaging(page, perPage int) (int, int) {
 	if page < 1 {
 		page = 1
 	}
-	if perPage < 1 || perPage > 50 {
-		perPage = 20
+	if perPage < 1 || perPage > MaxPerPage {
+		perPage = DefaultPerPage
 	}
-	return s.ebookRepo.ListVisible(ctx, page, perPage, userID, isAdmin)
+	return page, perPage
+}
+
+func (s *EbookService) List(ctx context.Context, q dto.EbookListQuery, userID string, isAdmin bool) ([]*model.Ebook, int, error) {
+	page, perPage := NormalizePaging(q.Page, q.PerPage)
+	filter := repository.EbookFilter{
+		Query:      q.Query,
+		Author:     q.Author,
+		Visibility: q.Visibility,
+		Sort:       q.Sort,
+	}
+	return s.ebookRepo.ListVisible(ctx, page, perPage, userID, isAdmin, filter)
+}
+
+// ListAuthors feeds the author filter on the ebook list page.
+func (s *EbookService) ListAuthors(ctx context.Context, userID string, isAdmin bool) ([]string, error) {
+	return s.ebookRepo.ListAuthors(ctx, userID, isAdmin)
 }
 
 func (s *EbookService) Update(ctx context.Context, id string, req dto.EbookUpdateRequest, userID string, isAdmin bool) (*model.Ebook, error) {

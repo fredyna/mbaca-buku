@@ -19,7 +19,8 @@ export default function DashboardPage() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    ebooksApi.list(1, 4).then(({ ebooks }) => setRecentEbooks(ebooks));
+    // sort is explicit here: the list endpoint now defaults to title order.
+    ebooksApi.list({ page: 1, perPage: 4, sort: 'latest' }).then(({ ebooks }) => setRecentEbooks(ebooks));
     historyApi.getHistory().then((data) => setReading(data.reading || []));
   }, []);
 
