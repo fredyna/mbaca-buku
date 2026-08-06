@@ -22,15 +22,18 @@ func (r *HistoryRepository) LogOpen(ctx context.Context, userID, ebookID string)
 }
 
 func (r *HistoryRepository) GetUserHistory(ctx context.Context, userID string) ([]dto.HistoryItem, error) {
-	query := `SELECT DISTINCT ON (rp.ebook_id)
-		rp.ebook_id, e.title, e.author, e.cover_url, e.total_pages, rp.last_page, rp.status,
-		e.is_private, e.uploaded_by, COALESCE(u.name, ''), e.created_at, h.opened_at
+	query := `SELECT * FROM (
+		SELECT DISTINCT ON (rp.ebook_id)
+			rp.ebook_id, e.title, e.author, e.cover_url, e.total_pages, rp.last_page, rp.status,
+			e.is_private, e.uploaded_by, COALESCE(u.name, ''), e.created_at, h.opened_at AS last_opened
 		FROM reading_progress rp
 		JOIN ebooks e ON e.id = rp.ebook_id
 		LEFT JOIN users u ON u.id = e.uploaded_by
 		LEFT JOIN history h ON h.user_id = rp.user_id AND h.ebook_id = rp.ebook_id
 		WHERE rp.user_id = $1
-		ORDER BY rp.ebook_id, h.opened_at DESC`
+		ORDER BY rp.ebook_id, h.opened_at DESC
+	) AS history_items
+	ORDER BY last_opened DESC NULLS LAST`
 
 	rows, err := r.db.QueryContext(ctx, query, userID)
 	if err != nil {
