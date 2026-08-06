@@ -69,6 +69,9 @@ export default function LoginPage() {
           Don't have an account?{' '}
           <Link to="/register" className="text-blue-600 hover:underline">Register</Link>
         </p>
+        <p className="mt-8 text-center text-xs text-gray-400">
+          © {new Date().getFullYear()} Created by Fredy Nur Apriyanto
+        </p>
       </div>
     </div>
   );
