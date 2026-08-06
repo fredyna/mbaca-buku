@@ -36,3 +36,12 @@ func (s *HistoryService) GetHistory(ctx context.Context, userID string) (*dto.Hi
 
 	return resp, nil
 }
+
+func (s *HistoryService) List(ctx context.Context, userID, status string, page, perPage int) ([]dto.HistoryItem, int, error) {
+	page, perPage = NormalizePaging(page, perPage)
+	items, total, err := s.historyRepo.ListUserHistory(ctx, userID, status, page, perPage)
+	if err != nil {
+		return nil, 0, err
+	}
+	return items, total, nil
+}

@@ -11,6 +11,8 @@ import ViewToggle from '../components/common/ViewToggle';
 import type { ViewMode } from '../components/common/ViewToggle';
 import { usePersistentState } from '../hooks/usePersistentState';
 
+const CONTINUE_READING_LIMIT = 5;
+
 export default function DashboardPage() {
   const [recentEbooks, setRecentEbooks] = useState<Ebook[]>([]);
   const [reading, setReading] = useState<HistoryItem[]>([]);
@@ -21,7 +23,9 @@ export default function DashboardPage() {
   useEffect(() => {
     // sort is explicit here: the list endpoint now defaults to title order.
     ebooksApi.list({ page: 1, perPage: 4, sort: 'latest' }).then(({ ebooks }) => setRecentEbooks(ebooks));
-    historyApi.getHistory().then((data) => setReading(data.reading || []));
+    historyApi.getHistory().then((data) =>
+      setReading((data.reading || []).slice(0, CONTINUE_READING_LIMIT))
+    );
   }, []);
 
   const handleRead = async (id: string) => {

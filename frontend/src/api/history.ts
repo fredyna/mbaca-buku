@@ -21,6 +21,17 @@ export interface HistoryResponse {
   completed: HistoryItem[];
 }
 
+export interface HistoryListMeta {
+  page: number;
+  per_page: number;
+  total: number;
+}
+
+export interface HistoryListResponse {
+  items: HistoryItem[];
+  meta: HistoryListMeta;
+}
+
 export function historyItemToEbook(item: HistoryItem): Ebook {
   return {
     id: item.ebook_id,
@@ -40,6 +51,15 @@ export const historyApi = {
   getHistory: async () => {
     const res = await client.get<{ success: boolean; data: HistoryResponse }>('/history');
     return res.data.data;
+  },
+
+  list: async (status: 'reading' | 'completed', page: number, perPage: number) => {
+    const res = await client.get<{
+      success: boolean;
+      data: HistoryItem[];
+      meta: HistoryListMeta;
+    }>(`/history?status=${status}&page=${page}&per_page=${perPage}`);
+    return { items: res.data.data || [], meta: res.data.meta };
   },
 
   openBook: async (ebookId: string) => {

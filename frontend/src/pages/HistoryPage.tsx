@@ -1,36 +1,85 @@
-import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useCallback, useEffect, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import type { Ebook } from '../api/ebooks';
 import type { HistoryItem } from '../api/history';
 import { historyApi, historyItemToEbook } from '../api/history';
 import EbookCard from '../components/ebook/EbookCard';
 import EbookDetailModal from '../components/ebook/EbookDetailModal';
 import EmptyState from '../components/common/EmptyState';
+import Pagination from '../components/common/Pagination';
 import ViewToggle from '../components/common/ViewToggle';
 import type { ViewMode } from '../components/common/ViewToggle';
 import { usePersistentState } from '../hooks/usePersistentState';
 
+const HISTORY_PER_PAGE = 8;
+
 export default function HistoryPage() {
-  const [reading, setReading] = useState<HistoryItem[]>([]);
-  const [completed, setCompleted] = useState<HistoryItem[]>([]);
-  const [tab, setTab] = useState<'reading' | 'completed'>('reading');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabParam = searchParams.get('tab');
+  const page = Math.max(1, Number(searchParams.get('page')) || 1);
+  const tab = tabParam === 'completed' ? 'completed' : 'reading';
+
+  const [items, setItems] = useState<HistoryItem[]>([]);
+  const [total, setTotal] = useState(0);
   const [detail, setDetail] = useState<Ebook | null>(null);
   const [viewMode, setViewMode] = usePersistentState<ViewMode>('history:viewMode', 'grid');
+  const [loading, setLoading] = useState(true);
+  const [errorMsg, setErrorMsg] = useState('');
   const navigate = useNavigate();
 
-  useEffect(() => {
-    historyApi.getHistory().then((data) => {
-      setReading(data.reading || []);
-      setCompleted(data.completed || []);
+  const setTab = (nextTab: 'reading' | 'completed') => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.set('tab', nextTab);
+      next.delete('page');
+      return next;
     });
-  }, []);
+  };
+
+  const goToPage = (target: number, replace = false) => {
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        if (target <= 1) next.delete('page');
+        else next.set('page', String(target));
+        return next;
+      },
+      { replace }
+    );
+  };
+
+  const loadHistory = useCallback(() => {
+    setLoading(true);
+    historyApi
+      .list(tab, page, HISTORY_PER_PAGE)
+      .then(({ items, meta }) => {
+        setItems(items);
+        setTotal(meta.total);
+        setErrorMsg('');
+      })
+      .catch(() => {
+        setItems([]);
+        setTotal(0);
+        setErrorMsg('Failed to load history');
+      })
+      .finally(() => setLoading(false));
+  }, [page, tab]);
+
+  useEffect(() => {
+    loadHistory();
+  }, [loadHistory]);
+
+  useEffect(() => {
+    const totalPages = Math.max(1, Math.ceil(total / HISTORY_PER_PAGE));
+    if (!loading && page > totalPages) {
+      goToPage(totalPages, true);
+    }
+  }, [loading, page, total]);
 
   const handleRead = async (id: string) => {
     await historyApi.openBook(id);
     navigate(`/read/${id}`);
   };
-
-  const items = tab === 'reading' ? reading : completed;
 
   const containerClass =
     viewMode === 'grid'
@@ -49,7 +98,7 @@ export default function HistoryPage() {
               tab === 'reading' ? 'bg-white shadow text-gray-900' : 'text-gray-600'
             }`}
           >
-            In Progress ({reading.length})
+            In Progress
           </button>
           <button
             onClick={() => setTab('completed')}
@@ -57,13 +106,17 @@ export default function HistoryPage() {
               tab === 'completed' ? 'bg-white shadow text-gray-900' : 'text-gray-600'
             }`}
           >
-            Completed ({completed.length})
+            Completed
           </button>
         </div>
         <ViewToggle value={viewMode} onChange={setViewMode} />
       </div>
 
-      {items.length === 0 ? (
+      {errorMsg && (
+        <div className="bg-red-50 text-red-600 p-3 rounded mb-4 text-sm">{errorMsg}</div>
+      )}
+
+      {items.length === 0 && !loading ? (
         <EmptyState
           title={tab === 'reading' ? 'No books in progress' : 'No completed books'}
           description={
@@ -73,30 +126,39 @@ export default function HistoryPage() {
           }
         />
       ) : (
-        <div className={containerClass}>
-          {items.map((item) => {
-            // A completed book still sitting on its last page has not been
-            // re-read yet, so a full bar would overstate what happened.
-            const notReReadYet = tab === 'completed' && item.last_page >= item.total_pages;
+        <>
+          <div className={containerClass}>
+            {items.map((item) => {
+              const notReReadYet = tab === 'completed' && item.last_page >= item.total_pages;
 
-            return (
-              <EbookCard
-                key={item.ebook_id}
-                ebook={historyItemToEbook(item)}
-                onRead={handleRead}
-                onShowDetail={setDetail}
-                progress={
-                  notReReadYet
-                    ? undefined
-                    : { last_page: item.last_page, total_pages: item.total_pages }
-                }
-                progressLabel={tab === 'completed' ? 'Re-read progress' : 'Progress'}
-                note={notReReadYet ? 'Finished' : undefined}
-                viewMode={viewMode}
-              />
-            );
-          })}
-        </div>
+              return (
+                <EbookCard
+                  key={item.ebook_id}
+                  ebook={historyItemToEbook(item)}
+                  onRead={handleRead}
+                  onShowDetail={setDetail}
+                  progress={
+                    notReReadYet
+                      ? undefined
+                      : { last_page: item.last_page, total_pages: item.total_pages }
+                  }
+                  progressLabel={tab === 'completed' ? 'Re-read progress' : 'Progress'}
+                  note={notReReadYet ? 'Finished' : undefined}
+                  viewMode={viewMode}
+                />
+              );
+            })}
+          </div>
+
+          <div className="mt-6">
+            <Pagination
+              page={page}
+              perPage={HISTORY_PER_PAGE}
+              total={total}
+              onChange={goToPage}
+            />
+          </div>
+        </>
       )}
 
       <EbookDetailModal ebook={detail} onClose={() => setDetail(null)} />

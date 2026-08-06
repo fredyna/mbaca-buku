@@ -64,3 +64,58 @@ func (r *HistoryRepository) GetUserHistory(ctx context.Context, userID string) (
 	}
 	return items, nil
 }
+
+func (r *HistoryRepository) ListUserHistory(ctx context.Context, userID, status string, page, perPage int) ([]dto.HistoryItem, int, error) {
+	query := `SELECT * FROM (
+		SELECT DISTINCT ON (rp.ebook_id)
+			rp.ebook_id, e.title, e.author, e.cover_url, e.total_pages, rp.last_page, rp.status,
+			e.is_private, e.uploaded_by, COALESCE(u.name, ''), e.created_at, h.opened_at AS last_opened
+		FROM reading_progress rp
+		JOIN ebooks e ON e.id = rp.ebook_id
+		LEFT JOIN users u ON u.id = e.uploaded_by
+		LEFT JOIN history h ON h.user_id = rp.user_id AND h.ebook_id = rp.ebook_id
+		WHERE rp.user_id = $1 AND rp.status = $2
+		ORDER BY rp.ebook_id, h.opened_at DESC
+	) AS history_items
+	ORDER BY last_opened DESC NULLS LAST
+	LIMIT $3 OFFSET $4`
+
+	offset := (page - 1) * perPage
+	rows, err := r.db.QueryContext(ctx, query, userID, status, perPage, offset)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+
+	var items []dto.HistoryItem
+	for rows.Next() {
+		var item dto.HistoryItem
+		var openedAt sql.NullTime
+		var uploadedBy sql.NullString
+		if err := rows.Scan(&item.EbookID, &item.Title, &item.Author, &item.CoverURL,
+			&item.TotalPages, &item.LastPage, &item.Status,
+			&item.IsPrivate, &uploadedBy, &item.UploadedByName, &item.CreatedAt, &openedAt); err != nil {
+			return nil, 0, err
+		}
+		if uploadedBy.Valid {
+			item.UploadedBy = uploadedBy.String
+		}
+		if openedAt.Valid {
+			item.LastOpened = openedAt.Time
+		}
+		items = append(items, item)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, 0, err
+	}
+
+	totalQuery := `SELECT COUNT(DISTINCT rp.ebook_id)
+		FROM reading_progress rp
+		WHERE rp.user_id = $1 AND rp.status = $2`
+	var total int
+	if err := r.db.QueryRowContext(ctx, totalQuery, userID, status).Scan(&total); err != nil {
+		return nil, 0, err
+	}
+
+	return items, total, nil
+}
