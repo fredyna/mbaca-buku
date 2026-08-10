@@ -19,6 +19,7 @@ import (
 	"github.com/fredy/mbaca-buku/internal/storage"
 	"github.com/fredy/mbaca-buku/pkg/cache"
 	"github.com/fredy/mbaca-buku/pkg/database"
+	"github.com/fredy/mbaca-buku/pkg/supabase"
 )
 
 func main() {
@@ -46,7 +47,11 @@ func main() {
 	}
 
 	userRepo := repository.NewUserRepository(db)
-	authService := service.NewAuthService(userRepo, cfg.JWTSecret)
+	oauthVerifier := supabase.NewVerifier(cfg.SupabaseURL, cfg.SupabaseAnonKey)
+	if !oauthVerifier.Configured() {
+		log.Println("Warning: SUPABASE_URL/SUPABASE_ANON_KEY not set, Google sign-in is disabled")
+	}
+	authService := service.NewAuthService(userRepo, cfg.JWTSecret, oauthVerifier)
 
 	if err := authService.SeedDefaultUser(context.Background()); err != nil {
 		log.Printf("Warning: failed to seed default user: %v", err)

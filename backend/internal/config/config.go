@@ -11,11 +11,19 @@ type Config struct {
 	DatabaseURL    string
 	RedisURL       string
 	AllowedOrigins []string
-	R2Endpoint  string
-	R2AccessKey string
-	R2SecretKey string
-	R2Bucket    string
-	JWTSecret   string
+	R2Endpoint     string
+	R2AccessKey    string
+	R2SecretKey    string
+	R2Bucket       string
+	JWTSecret      string
+
+	// Supabase backs the "Sign in with Google" button: the browser completes the
+	// OAuth dance with Supabase, and the API trades the resulting access token
+	// for a user record by asking Supabase who it belongs to. Both are optional
+	// so a deployment that only offers password login still starts; /auth/oauth
+	// reports the missing configuration instead.
+	SupabaseURL     string
+	SupabaseAnonKey string
 }
 
 func Load() *Config {
@@ -24,12 +32,26 @@ func Load() *Config {
 		DatabaseURL:    databaseURL(),
 		RedisURL:       getEnv("REDIS_URL", "redis://localhost:6379/0"),
 		AllowedOrigins: allowedOrigins(),
-		R2Endpoint:  r2Endpoint(),
-		R2AccessKey: mustEnv("R2_ACCESS_KEY_ID"),
-		R2SecretKey: mustEnv("R2_SECRET_ACCESS_KEY"),
-		R2Bucket:    mustEnv("R2_BUCKET"),
-		JWTSecret:   mustEnv("JWT_SECRET"),
+		R2Endpoint:     r2Endpoint(),
+		R2AccessKey:    mustEnv("R2_ACCESS_KEY_ID"),
+		R2SecretKey:    mustEnv("R2_SECRET_ACCESS_KEY"),
+		R2Bucket:       mustEnv("R2_BUCKET"),
+		JWTSecret:      mustEnv("JWT_SECRET"),
+
+		SupabaseURL:     supabaseURL(),
+		SupabaseAnonKey: getEnv("SUPABASE_ANON_KEY", ""),
 	}
+}
+
+// supabaseURL reads the Supabase project URL and normalises away a trailing
+// slash, so callers can join "/auth/v1/user" onto it without doubling it.
+func supabaseURL() string {
+	v := strings.TrimSuffix(getEnv("SUPABASE_URL", ""), "/")
+	if v != "" && !strings.HasPrefix(v, "https://") && !strings.HasPrefix(v, "http://") {
+		log.Fatal("SUPABASE_URL must be the full project URL including the scheme, " +
+			"e.g. https://<project-ref>.supabase.co")
+	}
+	return v
 }
 
 // r2Endpoint reads the R2 host. Cloudflare's dashboard presents the S3 API as

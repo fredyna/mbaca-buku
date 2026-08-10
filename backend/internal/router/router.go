@@ -31,6 +31,7 @@ func Setup(r *gin.Engine, cfg *RouterConfig) {
 	{
 		auth.POST("/register", cfg.AuthHandler.Register)
 		auth.POST("/login", cfg.AuthHandler.Login)
+		auth.POST("/oauth", cfg.AuthHandler.OAuth)
 		auth.GET("/me", middleware.AuthMiddleware(cfg.JWTSecret), cfg.AuthHandler.Me)
 		auth.PUT("/password", middleware.AuthMiddleware(cfg.JWTSecret), cfg.AuthHandler.ChangePassword)
 	}

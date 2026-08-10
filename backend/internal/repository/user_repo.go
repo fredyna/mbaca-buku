@@ -20,16 +20,18 @@ func (r *UserRepository) Create(ctx context.Context, user *model.User) error {
 	if user.Role == "" {
 		user.Role = "user"
 	}
-	query := `INSERT INTO users (name, email, password_hash, role) VALUES ($1, $2, $3, $4) RETURNING id, created_at, updated_at`
-	return r.db.QueryRowContext(ctx, query, user.Name, user.Email, user.PasswordHash, user.Role).
+	query := `INSERT INTO users (name, email, password_hash, role, provider, provider_id, avatar_url, is_oauth)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id, created_at, updated_at`
+	return r.db.QueryRowContext(ctx, query, user.Name, user.Email, user.PasswordHash, user.Role,
+		user.Provider, user.ProviderID, user.AvatarURL, user.IsOAuth).
 		Scan(&user.ID, &user.CreatedAt, &user.UpdatedAt)
 }
 
 func (r *UserRepository) GetByEmail(ctx context.Context, email string) (*model.User, error) {
 	user := &model.User{}
-	query := `SELECT id, name, email, password_hash, role, created_at, updated_at FROM users WHERE email = $1`
+	query := `SELECT id, name, email, password_hash, role, provider, provider_id, avatar_url, is_oauth, created_at, updated_at FROM users WHERE email = $1`
 	err := r.db.QueryRowContext(ctx, query, email).
-		Scan(&user.ID, &user.Name, &user.Email, &user.PasswordHash, &user.Role, &user.CreatedAt, &user.UpdatedAt)
+		Scan(&user.ID, &user.Name, &user.Email, &user.PasswordHash, &user.Role, &user.Provider, &user.ProviderID, &user.AvatarURL, &user.IsOAuth, &user.CreatedAt, &user.UpdatedAt)
 	if err == sql.ErrNoRows {
 		return nil, fmt.Errorf("user not found")
 	}
@@ -38,9 +40,9 @@ func (r *UserRepository) GetByEmail(ctx context.Context, email string) (*model.U
 
 func (r *UserRepository) GetByID(ctx context.Context, id string) (*model.User, error) {
 	user := &model.User{}
-	query := `SELECT id, name, email, password_hash, role, created_at, updated_at FROM users WHERE id = $1`
+	query := `SELECT id, name, email, password_hash, role, provider, provider_id, avatar_url, is_oauth, created_at, updated_at FROM users WHERE id = $1`
 	err := r.db.QueryRowContext(ctx, query, id).
-		Scan(&user.ID, &user.Name, &user.Email, &user.PasswordHash, &user.Role, &user.CreatedAt, &user.UpdatedAt)
+		Scan(&user.ID, &user.Name, &user.Email, &user.PasswordHash, &user.Role, &user.Provider, &user.ProviderID, &user.AvatarURL, &user.IsOAuth, &user.CreatedAt, &user.UpdatedAt)
 	if err == sql.ErrNoRows {
 		return nil, fmt.Errorf("user not found")
 	}
@@ -76,8 +78,8 @@ func (r *UserRepository) List(ctx context.Context, page, perPage int) ([]*model.
 
 func (r *UserRepository) Update(ctx context.Context, user *model.User) error {
 	res, err := r.db.ExecContext(ctx,
-		`UPDATE users SET name = $1, email = $2, role = $3, updated_at = NOW() WHERE id = $4`,
-		user.Name, user.Email, user.Role, user.ID)
+		`UPDATE users SET name = $1, email = $2, role = $3, provider = $4, provider_id = $5, avatar_url = $6, is_oauth = $7, updated_at = NOW() WHERE id = $8`,
+		user.Name, user.Email, user.Role, user.Provider, user.ProviderID, user.AvatarURL, user.IsOAuth, user.ID)
 	if err != nil {
 		return err
 	}

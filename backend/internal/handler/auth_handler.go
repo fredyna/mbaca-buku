@@ -8,6 +8,7 @@ import (
 
 	"github.com/fredy/mbaca-buku/internal/dto"
 	"github.com/fredy/mbaca-buku/internal/service"
+	"github.com/fredy/mbaca-buku/pkg/supabase"
 	"github.com/fredy/mbaca-buku/pkg/utils"
 )
 
@@ -89,4 +90,29 @@ func (h *AuthHandler) Me(c *gin.Context) {
 		Email: user.Email,
 		Role:  user.Role,
 	})
+}
+
+// OAuth trades a Supabase access token for this API's own JWT, creating or
+// refreshing the matching row in the users table along the way. The response is
+// shaped exactly like Login's, so the frontend stores the token the same way
+// whichever button the user pressed.
+func (h *AuthHandler) OAuth(c *gin.Context) {
+	var req dto.OAuthRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		utils.ErrorResponse(c, http.StatusBadRequest, "VALIDATION_ERROR", err.Error())
+		return
+	}
+
+	resp, err := h.authService.OAuthLogin(c.Request.Context(), req)
+	switch {
+	case err == nil:
+		utils.SuccessResponse(c, http.StatusOK, resp)
+	case errors.Is(err, supabase.ErrInvalidToken):
+		utils.ErrorResponse(c, http.StatusUnauthorized, "UNAUTHORIZED", err.Error())
+	case errors.Is(err, supabase.ErrNotConfigured):
+		utils.ErrorResponse(c, http.StatusServiceUnavailable, "OAUTH_NOT_CONFIGURED",
+			"Google sign-in is unavailable: set SUPABASE_URL and SUPABASE_ANON_KEY on the API")
+	default:
+		utils.ErrorResponse(c, http.StatusInternalServerError, "OAUTH_ERROR", err.Error())
+	}
 }

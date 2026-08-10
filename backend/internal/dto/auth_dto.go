@@ -16,6 +16,14 @@ type ChangePasswordRequest struct {
 	NewPassword string `json:"new_password" binding:"required,min=5"`
 }
 
+// OAuthRequest carries nothing but the Supabase access token the browser
+// received. The identity behind it — email, name, avatar — is read back from
+// Supabase rather than accepted from the client, so a caller cannot name
+// whichever account it would like a token for.
+type OAuthRequest struct {
+	AccessToken string `json:"access_token" binding:"required"`
+}
+
 type AuthResponse struct {
 	User  UserResponse `json:"user"`
 	Token string       `json:"token"`

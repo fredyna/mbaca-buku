@@ -1,15 +1,30 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { authErrorMessage } from '../api/auth';
+import { isSupabaseConfigured } from '../api/supabaseClient';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const { login } = useAuth();
+  const { login, loginWithGoogle, user, isLoading } = useAuth();
   const navigate = useNavigate();
+
+  // Coming back from Google lands here with a Supabase session but no app token
+  // yet. Wait for AuthProvider to finish the exchange rather than showing a
+  // login form to someone who has already signed in.
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-gray-500">Signing you in...</div>
+      </div>
+    );
+  }
+
+  if (user) return <Navigate to="/" replace />;
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -18,9 +33,23 @@ export default function LoginPage() {
     try {
       await login(email, password);
       navigate('/');
-    } catch {
-      setError('Invalid email or password');
+    } catch (err) {
+      setError(authErrorMessage(err, 'Invalid email or password'));
     } finally {
+      setLoading(false);
+    }
+  };
+
+  // Leaves the page for Google's consent screen; the browser returns to the app
+  // root, where AuthProvider swaps the Supabase session for an app token. No
+  // navigate() here — there is nothing left to navigate.
+  const handleGoogle = async () => {
+    setError('');
+    setLoading(true);
+    try {
+      await loginWithGoogle();
+    } catch (err) {
+      setError(authErrorMessage(err, 'Google sign-in failed'));
       setLoading(false);
     }
   };
@@ -64,6 +93,18 @@ export default function LoginPage() {
             {loading ? 'Signing in...' : 'Sign In'}
           </button>
         </form>
+
+        {isSupabaseConfigured && (
+          <div className="mt-4">
+            <button
+              onClick={handleGoogle}
+              disabled={loading}
+              className="w-full py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50"
+            >
+              {loading ? 'Opening Google...' : 'Sign in with Google'}
+            </button>
+          </div>
+        )}
 
         <p className="mt-6 text-center text-sm text-gray-600">
           Don't have an account?{' '}
