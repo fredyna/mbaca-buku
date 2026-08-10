@@ -90,7 +90,7 @@ export default function HistoryPage() {
     <div>
       <h1 className="text-2xl font-bold text-gray-900 mb-6">Reading History</h1>
 
-      <div className="flex items-center justify-between gap-3 mb-6">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
         <div className="flex gap-1 bg-gray-100 p-1 rounded-lg w-fit">
           <button
             onClick={() => setTab('reading')}

@@ -41,11 +41,13 @@ export default function Pagination({ page, perPage, total, onChange }: Paginatio
       aria-label="Pagination"
       className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-3"
     >
-      <p className="text-sm text-gray-500">
+      <p className="text-sm text-gray-500 text-center">
         Showing {first}–{last} of {total} ebooks
       </p>
 
-      <div className="flex items-center gap-1">
+      {/* Wrapping keeps the full run of page numbers on screen on a phone
+          instead of pushing the page into a sideways scroll. */}
+      <div className="flex flex-wrap items-center justify-center gap-1">
         <button
           type="button"
           onClick={() => onChange(page - 1)}

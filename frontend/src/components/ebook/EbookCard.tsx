@@ -19,13 +19,13 @@ interface EbookCardProps {
 function PrivacyBadge({ isPrivate }: { isPrivate: boolean }) {
   if (isPrivate) {
     return (
-      <span className="inline-block px-1.5 py-0.5 text-[10px] font-medium rounded bg-gray-200 text-gray-700">
+      <span className="inline-block shrink-0 px-1.5 py-0.5 text-[10px] font-medium rounded bg-gray-200 text-gray-700">
         Private
       </span>
     );
   }
   return (
-    <span className="inline-block px-1.5 py-0.5 text-[10px] font-medium rounded bg-green-100 text-green-700">
+    <span className="inline-block shrink-0 px-1.5 py-0.5 text-[10px] font-medium rounded bg-green-100 text-green-700">
       Public
     </span>
   );
@@ -49,56 +49,61 @@ export default function EbookCard({
   const percent = progress ? progressPercent(progress.last_page, progress.total_pages) : 0;
 
   if (viewMode === 'list') {
+    // On a phone the row stacks: cover + text first, actions on their own full
+    // width line underneath. From sm up it becomes the usual single line with
+    // the actions parked on the right.
     return (
-      <div className="bg-white rounded-lg shadow hover:shadow-md transition-shadow p-3 flex items-center gap-4">
-        <div className="w-14 h-20 shrink-0 rounded bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center">
-          <span className="text-white text-xs font-bold opacity-40">PDF</span>
-        </div>
-
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 min-w-0">
-            <TitleTag
-              {...titleProps}
-              className={`font-semibold text-gray-900 truncate text-left ${
-                onShowDetail ? 'hover:text-blue-600 hover:underline cursor-pointer' : ''
-              }`}
-            >
-              {ebook.title}
-            </TitleTag>
-            <PrivacyBadge isPrivate={ebook.is_private} />
+      <div className="bg-white rounded-lg shadow hover:shadow-md transition-shadow p-3 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
+        <div className="flex items-start gap-3 min-w-0 flex-1">
+          <div className="w-12 h-16 sm:w-14 sm:h-20 shrink-0 rounded bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center">
+            <span className="text-white text-xs font-bold opacity-40">PDF</span>
           </div>
-          <p className="text-sm text-gray-500 truncate">{ebook.author || 'Unknown author'}</p>
-          <p className="text-xs text-gray-400 mt-0.5">{ebook.total_pages} pages</p>
 
-          {progress ? (
-            <div className="mt-2 max-w-xs">
-              <div className="flex justify-between text-xs text-gray-500 mb-1">
-                <span>{progressLabel}</span>
-                <span>{percent}%</span>
-              </div>
-              <div className="w-full bg-gray-200 rounded-full h-1.5">
-                <div
-                  className="bg-blue-600 h-1.5 rounded-full"
-                  style={{ width: `${percent}%` }}
-                />
-              </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-start gap-2 min-w-0">
+              <TitleTag
+                {...titleProps}
+                className={`font-semibold text-gray-900 line-clamp-2 text-left min-w-0 ${
+                  onShowDetail ? 'hover:text-blue-600 hover:underline cursor-pointer' : ''
+                }`}
+              >
+                {ebook.title}
+              </TitleTag>
+              <PrivacyBadge isPrivate={ebook.is_private} />
             </div>
-          ) : (
-            note && <p className="mt-2 text-xs font-medium text-green-700">{note}</p>
-          )}
+            <p className="text-sm text-gray-500 truncate">{ebook.author || 'Unknown author'}</p>
+            <p className="text-xs text-gray-400 mt-0.5">{ebook.total_pages} pages</p>
+
+            {progress ? (
+              <div className="mt-2 sm:max-w-xs">
+                <div className="flex justify-between text-xs text-gray-500 mb-1">
+                  <span>{progressLabel}</span>
+                  <span>{percent}%</span>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-1.5">
+                  <div
+                    className="bg-blue-600 h-1.5 rounded-full"
+                    style={{ width: `${percent}%` }}
+                  />
+                </div>
+              </div>
+            ) : (
+              note && <p className="mt-2 text-xs font-medium text-green-700">{note}</p>
+            )}
+          </div>
         </div>
 
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 shrink-0">
+        <div className="flex items-center gap-2 shrink-0">
           <button
             onClick={() => onRead(ebook.id)}
-            className="px-3 py-1.5 bg-blue-600 text-white text-sm rounded hover:bg-blue-700"
+            className="flex-1 sm:flex-none px-3 py-1.5 bg-blue-600 text-white text-sm rounded hover:bg-blue-700"
           >
             Read
           </button>
           {onEdit && (
             <button
               onClick={() => onEdit(ebook)}
-              className="px-3 py-1.5 text-gray-700 text-sm border border-gray-300 rounded hover:bg-gray-50"
+              className="flex-1 sm:flex-none px-3 py-1.5 text-gray-700 text-sm border border-gray-300 rounded hover:bg-gray-50"
             >
               Edit
             </button>
@@ -106,7 +111,7 @@ export default function EbookCard({
           {onDelete && (
             <button
               onClick={() => onDelete(ebook.id)}
-              className="px-3 py-1.5 text-red-600 text-sm border border-red-200 rounded hover:bg-red-50"
+              className="flex-1 sm:flex-none px-3 py-1.5 text-red-600 text-sm border border-red-200 rounded hover:bg-red-50"
             >
               Delete
             </button>

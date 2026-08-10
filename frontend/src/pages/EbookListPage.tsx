@@ -32,6 +32,11 @@ const VISIBILITY_LABELS: Record<EbookVisibility, string> = {
 const inputClass =
   'px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500';
 
+// A <select> is as wide as its longest option, so a long author name would
+// otherwise widen the whole page. min-w-0 lets it shrink; two fit per row on a
+// phone and they line up as usual from sm up.
+const selectClass = `${inputClass} min-w-0 flex-1 basis-36 sm:flex-none sm:basis-auto`;
+
 export default function EbookListPage() {
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -177,7 +182,7 @@ export default function EbookListPage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-4 gap-3">
+      <div className="flex flex-wrap items-center justify-between mb-4 gap-3">
         <h1 className="text-2xl font-bold text-gray-900">Ebooks</h1>
         <div className="flex items-center gap-3">
           <ViewToggle value={viewMode} onChange={setViewMode} />
@@ -200,14 +205,14 @@ export default function EbookListPage() {
           }}
           placeholder="Search by title..."
           aria-label="Search by title"
-          className={`${inputClass} flex-1 min-w-50`}
+          className={`${inputClass} w-full min-w-0 sm:w-auto sm:flex-1 sm:min-w-50`}
         />
 
         <select
           value={author}
           onChange={(e) => setFilter({ author: e.target.value })}
           aria-label="Filter by author"
-          className={inputClass}
+          className={selectClass}
         >
           <option value="">All authors</option>
           {/* The active author may have vanished from the list after an edit;
@@ -224,7 +229,7 @@ export default function EbookListPage() {
           value={visibility}
           onChange={(e) => setFilter({ visibility: e.target.value })}
           aria-label="Filter by visibility"
-          className={inputClass}
+          className={selectClass}
         >
           {VISIBILITIES.map((value) => (
             <option key={value} value={value}>
@@ -237,7 +242,7 @@ export default function EbookListPage() {
           value={sort}
           onChange={(e) => setFilter({ sort: e.target.value })}
           aria-label="Sort ebooks"
-          className={inputClass}
+          className={selectClass}
         >
           {SORTS.map((value) => (
             <option key={value} value={value}>
