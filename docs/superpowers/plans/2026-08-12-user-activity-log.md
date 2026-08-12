@@ -1263,7 +1263,11 @@ func (s *recorderSpy) RecordAsync(userID, event string, meta model.RequestMeta) 
 	s.calls = append(s.calls, recordedCall{userID: userID, event: event, meta: meta})
 }
 
-func loginTestRouter(t *testing.T, spy *recorderSpy) *gin.Engine {
+// The recorder parameter is the interface type, not *recorderSpy, so that
+// passing nil yields a genuinely nil interface. A nil *recorderSpy would satisfy
+// the interface with a non-nil type descriptor, sail past the handler's nil
+// check, and panic inside the spy's method.
+func loginTestRouter(t *testing.T, recorder activityRecorder) *gin.Engine {
 	t.Helper()
 	gin.SetMode(gin.TestMode)
 
@@ -1278,7 +1282,7 @@ func loginTestRouter(t *testing.T, spy *recorderSpy) *gin.Engine {
 		Role:         "user",
 	}}
 	authService := service.NewAuthService(store, "test-secret", nil)
-	h := NewAuthHandler(authService, spy)
+	h := NewAuthHandler(authService, recorder)
 
 	r := gin.New()
 	r.POST("/api/auth/login", h.Login)
@@ -1321,7 +1325,7 @@ func TestLoginWorksWithoutARecorder(t *testing.T) {
 }
 ```
 
-Note: `loginTestRouter(t, nil)` passes a typed nil `*recorderSpy` through the `activityRecorder` parameter. The handler's nil guard must therefore compare the interface value, which is why `NewAuthHandler` stores nil explicitly — see Step 3.
+Note the `activityRecorder` parameter type on `loginTestRouter`: it is deliberately the interface, not `*recorderSpy`. This is Go's typed-nil trap — a nil `*recorderSpy` stored in an interface is not `== nil`, so it would slip past the handler's guard and panic inside the spy. Keep the signature as written.
 
 - [ ] **Step 2: Run the test to verify it fails**
 
@@ -1352,8 +1356,8 @@ func NewAuthHandler(authService *service.AuthService, recorder activityRecorder)
 	return &AuthHandler{authService: authService, recorder: recorder}
 }
 
-// recordLogin logs a successful sign-in. A nil recorder disables it, and a
-// typed-nil pointer reaches the same check, so tests can pass either.
+// recordLogin logs a successful sign-in. A nil recorder disables it, which lets
+// a caller construct the handler without a database and Redis behind it.
 func (h *AuthHandler) recordLogin(c *gin.Context, userID string) {
 	if h.recorder == nil {
 		return
