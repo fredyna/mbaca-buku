@@ -7,6 +7,12 @@ export interface AdminUser {
   role: 'user' | 'admin';
   created_at: string;
   updated_at: string;
+  // Null until the user first signs in. Create and update responses omit these,
+  // so they are optional as well as nullable.
+  last_login_at?: string | null;
+  last_active_at?: string | null;
+  last_os?: string;
+  last_browser?: string;
 }
 
 export interface AdminUserListResponse {

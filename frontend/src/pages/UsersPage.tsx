@@ -6,6 +6,31 @@ import UserFormModal from '../components/admin/UserFormModal';
 import type { UserFormValues } from '../components/admin/UserFormModal';
 import ResetPasswordModal from '../components/admin/ResetPasswordModal';
 import EmptyState from '../components/common/EmptyState';
+import { formatDateTime, formatRelativeTime, isRecentlyActive } from '../utils/time';
+
+/** Last activity plus the device it came from, shared by the table and the cards. */
+function LastActiveCell({ user }: { user: AdminUser }) {
+  const lastActive = user.last_active_at ?? null;
+  const online = isRecentlyActive(lastActive);
+  const device = [user.last_browser, user.last_os].filter(Boolean).join(' · ');
+
+  return (
+    <div>
+      <div className="flex items-center gap-1.5">
+        {online && (
+          <span
+            className="w-2 h-2 rounded-full bg-green-500 shrink-0"
+            title="Active in the last 5 minutes"
+          />
+        )}
+        <span className={online ? 'text-gray-900' : 'text-gray-500'}>
+          {lastActive ? formatRelativeTime(lastActive) : 'Never signed in'}
+        </span>
+      </div>
+      {device && <div className="text-xs text-gray-400 mt-0.5">{device}</div>}
+    </div>
+  );
+}
 
 export default function UsersPage() {
   const { user: currentUser } = useAuth();
@@ -95,10 +120,10 @@ export default function UsersPage() {
             <table className="w-full text-sm">
               <thead className="bg-gray-50 text-gray-600 text-left">
                 <tr>
-                  <th className="px-4 py-3 font-medium">Name</th>
-                  <th className="px-4 py-3 font-medium">Email</th>
+                  <th className="px-4 py-3 font-medium">User</th>
                   <th className="px-4 py-3 font-medium">Role</th>
-                  <th className="px-4 py-3 font-medium">Joined</th>
+                  <th className="px-4 py-3 font-medium">Last login</th>
+                  <th className="px-4 py-3 font-medium">Last active</th>
                   <th className="px-4 py-3 font-medium text-right">Actions</th>
                 </tr>
               </thead>
@@ -107,13 +132,16 @@ export default function UsersPage() {
                   const isSelf = u.id === currentUser?.id;
                   return (
                     <tr key={u.id} className="hover:bg-gray-50">
-                      <td className="px-4 py-3 text-gray-900">
-                        {u.name}
-                        {isSelf && (
-                          <span className="ml-2 text-xs text-gray-400">(you)</span>
-                        )}
+                      <td className="px-4 py-3">
+                        <div className="text-gray-900">
+                          {u.name}
+                          {isSelf && <span className="ml-2 text-xs text-gray-400">(you)</span>}
+                        </div>
+                        <div className="text-gray-500">{u.email}</div>
+                        <div className="text-xs text-gray-400 mt-0.5">
+                          Joined {new Date(u.created_at).toLocaleDateString()}
+                        </div>
                       </td>
-                      <td className="px-4 py-3 text-gray-600">{u.email}</td>
                       <td className="px-4 py-3">
                         <span
                           className={`inline-block px-2 py-0.5 text-xs rounded ${
@@ -125,10 +153,13 @@ export default function UsersPage() {
                           {u.role}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-gray-500">
-                        {new Date(u.created_at).toLocaleDateString()}
+                      <td className="px-4 py-3 text-gray-500 whitespace-nowrap">
+                        {u.last_login_at ? formatDateTime(u.last_login_at) : '—'}
                       </td>
-                      <td className="px-4 py-3 text-right">
+                      <td className="px-4 py-3">
+                        <LastActiveCell user={u} />
+                      </td>
+                      <td className="px-4 py-3 text-right align-top">
                         <div className="inline-flex gap-2">
                           <button
                             onClick={() => setEditing(u)}
@@ -185,8 +216,14 @@ export default function UsersPage() {
                       {u.role}
                     </span>
                   </div>
-                  <div className="text-xs text-gray-400 mb-3">
+                  <div className="text-xs text-gray-400 mb-1">
                     Joined {new Date(u.created_at).toLocaleDateString()}
+                  </div>
+                  <div className="text-sm text-gray-500 mb-1">
+                    Last login: {u.last_login_at ? formatDateTime(u.last_login_at) : '—'}
+                  </div>
+                  <div className="text-sm mb-3">
+                    <LastActiveCell user={u} />
                   </div>
                   <div className="flex flex-wrap gap-2">
                     <button
