@@ -62,7 +62,7 @@ func main() {
 	activityRepo := repository.NewActivityRepository(db)
 	activityService := service.NewActivityService(activityRepo, cache.NewRedisThrottle(rdb))
 
-	authHandler := handler.NewAuthHandler(authService)
+	authHandler := handler.NewAuthHandler(authService, activityService)
 
 	ebookRepo := repository.NewEbookRepository(db)
 	ebookService := service.NewEbookService(ebookRepo, fileStorage)
