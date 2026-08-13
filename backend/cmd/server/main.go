@@ -59,6 +59,9 @@ func main() {
 		log.Println("Default admin user ready")
 	}
 
+	activityRepo := repository.NewActivityRepository(db)
+	activityService := service.NewActivityService(activityRepo, cache.NewRedisThrottle(rdb))
+
 	authHandler := handler.NewAuthHandler(authService)
 
 	ebookRepo := repository.NewEbookRepository(db)
@@ -82,6 +85,7 @@ func main() {
 	flusherCtx, cancelFlusher := context.WithCancel(context.Background())
 	defer cancelFlusher()
 	readingService.StartFlusher(flusherCtx)
+	activityService.StartCleanup(flusherCtx)
 
 	r := gin.Default()
 
@@ -92,6 +96,7 @@ func main() {
 		HistoryHandler:   historyHandler,
 		BookmarkHandler:  bookmarkHandler,
 		AdminUserHandler: adminUserHandler,
+		ActivityRecorder: activityService,
 		JWTSecret:        cfg.JWTSecret,
 		AllowedOrigins:   cfg.AllowedOrigins,
 	})
