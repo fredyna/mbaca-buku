@@ -36,6 +36,15 @@ func toAdminUserResponse(u *model.User) dto.AdminUserResponse {
 	}
 }
 
+func toAdminUserListResponse(u *model.UserListItem) dto.AdminUserResponse {
+	resp := toAdminUserResponse(&u.User)
+	resp.LastLoginAt = u.LastLoginAt
+	resp.LastActiveAt = u.LastActiveAt
+	resp.LastOS = u.LastOS
+	resp.LastBrowser = u.LastBrowser
+	return resp
+}
+
 func (s *AdminUserService) List(ctx context.Context, page, perPage int) ([]dto.AdminUserResponse, int, error) {
 	if page < 1 {
 		page = 1
@@ -51,7 +60,7 @@ func (s *AdminUserService) List(ctx context.Context, page, perPage int) ([]dto.A
 
 	out := make([]dto.AdminUserResponse, 0, len(users))
 	for _, u := range users {
-		out = append(out, toAdminUserResponse(u))
+		out = append(out, toAdminUserListResponse(u))
 	}
 	return out, total, nil
 }

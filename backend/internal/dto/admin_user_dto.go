@@ -9,6 +9,15 @@ type AdminUserResponse struct {
 	Role      string    `json:"role"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
+
+	// Activity fields, populated by the list endpoint only. Null means the user
+	// has never signed in, which the UI shows differently from "a long time
+	// ago"; Create and Update leave them null because a user cannot have
+	// activity before they exist.
+	LastLoginAt  *time.Time `json:"last_login_at"`
+	LastActiveAt *time.Time `json:"last_active_at"`
+	LastOS       string     `json:"last_os"`
+	LastBrowser  string     `json:"last_browser"`
 }
 
 type AdminUserCreateRequest struct {
