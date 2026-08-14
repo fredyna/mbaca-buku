@@ -24,7 +24,7 @@ function LastActiveCell({ user }: { user: AdminUser }) {
           />
         )}
         <span className={online ? 'text-gray-900' : 'text-gray-500'}>
-          {lastActive ? formatRelativeTime(lastActive) : 'Never signed in'}
+          {lastActive ? formatRelativeTime(lastActive) : 'No activity'}
         </span>
       </div>
       {device && <div className="text-xs text-gray-400 mt-0.5">{device}</div>}
