@@ -20,6 +20,7 @@ import (
 	"github.com/fredy/mbaca-buku/pkg/cache"
 	"github.com/fredy/mbaca-buku/pkg/database"
 	"github.com/fredy/mbaca-buku/pkg/supabase"
+	"github.com/fredy/mbaca-buku/pkg/utils"
 )
 
 func main() {
@@ -88,6 +89,14 @@ func main() {
 	activityService.StartCleanup(flusherCtx)
 
 	r := gin.Default()
+
+	// Must happen before any request is served: it decides which header
+	// c.ClientIP() (used throughout, including the activity log's audit
+	// column) is allowed to trust. See the function doc for what this
+	// defends against.
+	if err := utils.ConfigureTrustedProxies(r); err != nil {
+		log.Fatalf("invalid trusted proxy configuration: %v", err)
+	}
 
 	router.Setup(r, &router.RouterConfig{
 		AuthHandler:      authHandler,
