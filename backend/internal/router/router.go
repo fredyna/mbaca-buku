@@ -14,6 +14,7 @@ type RouterConfig struct {
 	HistoryHandler   *handler.HistoryHandler
 	BookmarkHandler  *handler.BookmarkHandler
 	AdminUserHandler *handler.AdminUserHandler
+	ActivityRecorder middleware.ActivityRecorder
 	JWTSecret        string
 	AllowedOrigins   []string
 }
@@ -32,12 +33,12 @@ func Setup(r *gin.Engine, cfg *RouterConfig) {
 		auth.POST("/register", cfg.AuthHandler.Register)
 		auth.POST("/login", cfg.AuthHandler.Login)
 		auth.POST("/oauth", cfg.AuthHandler.OAuth)
-		auth.GET("/me", middleware.AuthMiddleware(cfg.JWTSecret), cfg.AuthHandler.Me)
-		auth.PUT("/password", middleware.AuthMiddleware(cfg.JWTSecret), cfg.AuthHandler.ChangePassword)
+		auth.GET("/me", middleware.AuthMiddleware(cfg.JWTSecret, cfg.ActivityRecorder), cfg.AuthHandler.Me)
+		auth.PUT("/password", middleware.AuthMiddleware(cfg.JWTSecret, cfg.ActivityRecorder), cfg.AuthHandler.ChangePassword)
 	}
 
 	protected := api.Group("")
-	protected.Use(middleware.AuthMiddleware(cfg.JWTSecret))
+	protected.Use(middleware.AuthMiddleware(cfg.JWTSecret, cfg.ActivityRecorder))
 	{
 		ebooks := protected.Group("/ebooks")
 		{

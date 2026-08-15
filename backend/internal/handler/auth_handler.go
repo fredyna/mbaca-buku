@@ -7,17 +7,38 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/fredy/mbaca-buku/internal/dto"
+	"github.com/fredy/mbaca-buku/internal/model"
 	"github.com/fredy/mbaca-buku/internal/service"
 	"github.com/fredy/mbaca-buku/pkg/supabase"
 	"github.com/fredy/mbaca-buku/pkg/utils"
 )
 
-type AuthHandler struct {
-	authService *service.AuthService
+// activityRecorder records a sign-in for the account that just authenticated.
+// Satisfied by *service.ActivityService.
+//
+// Sign-ins are recorded here rather than in AuthService so that service stays
+// free of HTTP concerns: the User-Agent and client address only exist at this
+// layer, and AuthService's tests keep working untouched.
+type activityRecorder interface {
+	RecordAsync(userID, event string, meta model.RequestMeta)
 }
 
-func NewAuthHandler(authService *service.AuthService) *AuthHandler {
-	return &AuthHandler{authService: authService}
+type AuthHandler struct {
+	authService *service.AuthService
+	recorder    activityRecorder
+}
+
+func NewAuthHandler(authService *service.AuthService, recorder activityRecorder) *AuthHandler {
+	return &AuthHandler{authService: authService, recorder: recorder}
+}
+
+// recordLogin logs a successful sign-in. A nil recorder disables it, which lets
+// a caller construct the handler without a database and Redis behind it.
+func (h *AuthHandler) recordLogin(c *gin.Context, userID string) {
+	if h.recorder == nil {
+		return
+	}
+	h.recorder.RecordAsync(userID, model.EventLogin, utils.RequestMetaOf(c))
 }
 
 func (h *AuthHandler) Register(c *gin.Context) {
@@ -33,6 +54,7 @@ func (h *AuthHandler) Register(c *gin.Context) {
 		return
 	}
 
+	h.recordLogin(c, resp.User.ID)
 	utils.SuccessResponse(c, http.StatusCreated, resp)
 }
 
@@ -49,6 +71,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		return
 	}
 
+	h.recordLogin(c, resp.User.ID)
 	utils.SuccessResponse(c, http.StatusOK, resp)
 }
 
@@ -106,6 +129,7 @@ func (h *AuthHandler) OAuth(c *gin.Context) {
 	resp, err := h.authService.OAuthLogin(c.Request.Context(), req)
 	switch {
 	case err == nil:
+		h.recordLogin(c, resp.User.ID)
 		utils.SuccessResponse(c, http.StatusOK, resp)
 	case errors.Is(err, supabase.ErrInvalidToken):
 		utils.ErrorResponse(c, http.StatusUnauthorized, "UNAUTHORIZED", err.Error())

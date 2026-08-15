@@ -49,7 +49,17 @@ func (r *UserRepository) GetByID(ctx context.Context, id string) (*model.User, e
 	return user, err
 }
 
-func (r *UserRepository) List(ctx context.Context, page, perPage int) ([]*model.User, int, error) {
+// List returns a page of users along with their latest activity.
+//
+// LEFT JOIN LATERAL is used because what's wanted is the latest *row* per user,
+// not an aggregate: each subquery walks idx_activity_user_created /
+// idx_activity_user_event backwards and stops at the first hit. LEFT keeps users
+// who have never signed in in the list.
+//
+// The OS and browser come from the latest activity of any kind rather than from
+// the latest login, because the question that column answers is "what are they
+// using now".
+func (r *UserRepository) List(ctx context.Context, page, perPage int) ([]*model.UserListItem, int, error) {
 	offset := (page - 1) * perPage
 
 	var total int
@@ -57,21 +67,57 @@ func (r *UserRepository) List(ctx context.Context, page, perPage int) ([]*model.
 		return nil, 0, err
 	}
 
-	rows, err := r.db.QueryContext(ctx,
-		`SELECT id, name, email, role, created_at, updated_at FROM users ORDER BY created_at DESC LIMIT $1 OFFSET $2`,
-		perPage, offset)
+	query := `
+		SELECT u.id, u.name, u.email, u.role, u.created_at, u.updated_at,
+		       last.created_at, last.os, last.browser,
+		       login.created_at
+		FROM users u
+		LEFT JOIN LATERAL (
+			SELECT created_at, os, browser FROM user_activity_logs
+			WHERE user_id = u.id
+			ORDER BY created_at DESC LIMIT 1
+		) last ON TRUE
+		LEFT JOIN LATERAL (
+			SELECT created_at FROM user_activity_logs
+			WHERE user_id = u.id AND event = $3
+			ORDER BY created_at DESC LIMIT 1
+		) login ON TRUE
+		ORDER BY u.created_at DESC
+		LIMIT $1 OFFSET $2`
+
+	rows, err := r.db.QueryContext(ctx, query, perPage, offset, model.EventLogin)
 	if err != nil {
 		return nil, 0, err
 	}
 	defer rows.Close()
 
-	users := make([]*model.User, 0)
+	users := make([]*model.UserListItem, 0)
 	for rows.Next() {
-		u := &model.User{}
-		if err := rows.Scan(&u.ID, &u.Name, &u.Email, &u.Role, &u.CreatedAt, &u.UpdatedAt); err != nil {
+		item := &model.UserListItem{}
+		// os and browser are NOT NULL in the table, but the LEFT JOIN yields
+		// NULL for a user with no activity at all, so they need Null scanners.
+		var lastActive, lastLogin sql.NullTime
+		var lastOS, lastBrowser sql.NullString
+
+		if err := rows.Scan(
+			&item.ID, &item.Name, &item.Email, &item.Role, &item.CreatedAt, &item.UpdatedAt,
+			&lastActive, &lastOS, &lastBrowser, &lastLogin,
+		); err != nil {
 			return nil, 0, err
 		}
-		users = append(users, u)
+
+		if lastActive.Valid {
+			t := lastActive.Time
+			item.LastActiveAt = &t
+		}
+		if lastLogin.Valid {
+			t := lastLogin.Time
+			item.LastLoginAt = &t
+		}
+		item.LastOS = lastOS.String
+		item.LastBrowser = lastBrowser.String
+
+		users = append(users, item)
 	}
 	return users, total, rows.Err()
 }

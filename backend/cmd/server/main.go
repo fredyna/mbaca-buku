@@ -20,6 +20,7 @@ import (
 	"github.com/fredy/mbaca-buku/pkg/cache"
 	"github.com/fredy/mbaca-buku/pkg/database"
 	"github.com/fredy/mbaca-buku/pkg/supabase"
+	"github.com/fredy/mbaca-buku/pkg/utils"
 )
 
 func main() {
@@ -59,7 +60,10 @@ func main() {
 		log.Println("Default admin user ready")
 	}
 
-	authHandler := handler.NewAuthHandler(authService)
+	activityRepo := repository.NewActivityRepository(db)
+	activityService := service.NewActivityService(activityRepo, cache.NewRedisThrottle(rdb))
+
+	authHandler := handler.NewAuthHandler(authService, activityService)
 
 	ebookRepo := repository.NewEbookRepository(db)
 	ebookService := service.NewEbookService(ebookRepo, fileStorage)
@@ -82,8 +86,17 @@ func main() {
 	flusherCtx, cancelFlusher := context.WithCancel(context.Background())
 	defer cancelFlusher()
 	readingService.StartFlusher(flusherCtx)
+	activityService.StartCleanup(flusherCtx)
 
 	r := gin.Default()
+
+	// Must happen before any request is served: it decides which header
+	// c.ClientIP() (used throughout, including the activity log's audit
+	// column) is allowed to trust. See the function doc for what this
+	// defends against.
+	if err := utils.ConfigureTrustedProxies(r); err != nil {
+		log.Fatalf("invalid trusted proxy configuration: %v", err)
+	}
 
 	router.Setup(r, &router.RouterConfig{
 		AuthHandler:      authHandler,
@@ -92,6 +105,7 @@ func main() {
 		HistoryHandler:   historyHandler,
 		BookmarkHandler:  bookmarkHandler,
 		AdminUserHandler: adminUserHandler,
+		ActivityRecorder: activityService,
 		JWTSecret:        cfg.JWTSecret,
 		AllowedOrigins:   cfg.AllowedOrigins,
 	})
